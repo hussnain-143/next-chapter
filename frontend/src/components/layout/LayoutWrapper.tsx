@@ -10,10 +10,7 @@ import ProtectedRoute from '../ProtectedRoute';
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
-      queries: {
-        refetchOnWindowFocus: false,
-        retry: 1,
-      },
+      queries: { refetchOnWindowFocus: false, retry: 1 },
     },
   }));
 
@@ -28,9 +25,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         ) : (
           <div className="flex h-screen w-screen overflow-hidden bg-background">
             <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 h-full relative">
+            <div className="flex-1 flex flex-col min-w-0 h-full">
               <Header />
-              <main className="flex-1 overflow-y-auto p-8">
+              <main className="flex-1 overflow-y-auto p-8 bg-mesh">
                 {children}
               </main>
             </div>

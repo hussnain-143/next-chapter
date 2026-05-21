@@ -86,34 +86,34 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatsCard
           title="Subjects Active"
           value={stats.totalSubjects}
           description="In learning queue"
           icon={BookOpen}
-          colorClass="from-primary/10 to-primary/5 text-primary border-primary/20"
+          variant="violet"
         />
         <StatsCard
           title="Study Duration"
           value={formatHours(stats.totalTimeSpent)}
           description="Total hours logged"
           icon={Hourglass}
-          colorClass="from-amber-500/10 to-amber-500/5 text-amber-500 border-amber-500/20"
+          variant="amber"
         />
         <StatsCard
           title="Completion Rate"
           value={`${stats.completionRate}%`}
-          description={`${stats.completedLessons}/${stats.totalLessons} lessons finished`}
+          description={`${stats.completedLessons}/${stats.totalLessons} lessons`}
           icon={CheckCircle}
-          colorClass="from-emerald-500/10 to-emerald-500/5 text-emerald-500 border-emerald-500/20"
+          variant="emerald"
         />
         <StatsCard
           title="Productivity Score"
           value={stats.productivityScore}
           description="Daily consistency rating"
           icon={TrendingUp}
-          colorClass="from-rose-500/10 to-rose-500/5 text-rose-500 border-rose-500/20"
+          variant="rose"
         />
       </div>
 

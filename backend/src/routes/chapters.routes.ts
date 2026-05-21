@@ -1,18 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import Chapter from '../models/Chapter';
 import Lesson from '../models/Lesson';
 import Subject from '../models/Subject';
 import KnowledgeNode from '../models/KnowledgeNode';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
-const USER_ID = 'default-user';
 
 // Get chapters by subject
-router.get('/subject/:subjectId', async (req: Request, res: Response) => {
+router.get('/subject/:subjectId', async (req: AuthRequest, res: Response) => {
   try {
     const chapters = await Chapter.find({
       subjectId: req.params.subjectId,
-      userId: USER_ID,
+      userId: req.user!.id,
     }).sort({ order: 1 });
     res.json(chapters);
   } catch (error) {
@@ -21,10 +21,12 @@ router.get('/subject/:subjectId', async (req: Request, res: Response) => {
 });
 
 // Get single chapter
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const chapter = await Chapter.findById(req.params.id);
-    if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
+    if (!chapter || chapter.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Chapter not found' });
+    }
     res.json(chapter);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch chapter' });
@@ -32,12 +34,13 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create chapter
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
     const lastChapter = await Chapter.findOne({ subjectId: req.body.subjectId }).sort({ order: -1 });
     const order = lastChapter ? lastChapter.order + 1 : 0;
 
-    const chapter = new Chapter({ ...req.body, userId: USER_ID, order });
+    const chapter = new Chapter({ ...req.body, userId, order });
     await chapter.save();
 
     // Update subject chapter count
@@ -45,7 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Create knowledge node
     await new KnowledgeNode({
-      userId: USER_ID,
+      userId,
       subjectId: req.body.subjectId,
       chapterId: chapter._id,
       type: 'chapter',
@@ -59,27 +62,33 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Update chapter
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
+    const chapter = await Chapter.findById(req.params.id);
+    if (!chapter || chapter.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Chapter not found' });
+    }
+
+    const updated = await Chapter.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
     await KnowledgeNode.findOneAndUpdate(
       { chapterId: chapter._id, type: 'chapter' },
-      { label: chapter.title }
+      { label: updated!.title }
     );
 
-    res.json(chapter);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update chapter' });
   }
 });
 
 // Delete chapter (cascade)
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const chapter = await Chapter.findById(req.params.id);
-    if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
+    if (!chapter || chapter.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Chapter not found' });
+    }
 
     const lessonCount = await Lesson.countDocuments({ chapterId: chapter._id });
 
@@ -99,7 +108,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // Reorder chapters
-router.put('/reorder/:subjectId', async (req: Request, res: Response) => {
+router.put('/reorder/:subjectId', async (req: AuthRequest, res: Response) => {
   try {
     const { order } = req.body; // array of { id, order }
     await Promise.all(
@@ -114,9 +123,14 @@ router.put('/reorder/:subjectId', async (req: Request, res: Response) => {
 });
 
 // Recalculate chapter stats
-router.post('/:id/recalculate', async (req: Request, res: Response) => {
+router.post('/:id/recalculate', async (req: AuthRequest, res: Response) => {
   try {
     const chapterId = req.params.id;
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter || chapter.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Chapter not found' });
+    }
+
     const lessons = await Lesson.find({ chapterId });
 
     const totalLessons = lessons.length;
@@ -124,13 +138,13 @@ router.post('/:id/recalculate', async (req: Request, res: Response) => {
     const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
     const totalTimeSpent = lessons.reduce((acc, l) => acc + l.timeSpent, 0);
 
-    const chapter = await Chapter.findByIdAndUpdate(
+    const updated = await Chapter.findByIdAndUpdate(
       chapterId,
       { totalLessons, completedLessons, progressPercent, totalTimeSpent },
       { new: true }
     );
 
-    res.json(chapter);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Failed to recalculate stats' });
   }

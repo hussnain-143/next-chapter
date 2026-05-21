@@ -29,12 +29,7 @@ export default function AICoach() {
   const { data: weakData, refetch: refetchWeak } = useQuery({
     queryKey: ['weakTopics'],
     queryFn: getWeakTopics,
-    onError: (err: any) => {
-      console.error('Weak topics fetch error', err);
-      toast.error('Failed to load weak topics');
-    },
     select: (data: any) => ({
-      // Handle possible nested weakTopics property
       weakTopics: Array.isArray(data?.weakTopics?.weakTopics)
         ? data.weakTopics.weakTopics
         : Array.isArray(data?.weakTopics)
@@ -49,10 +44,6 @@ export default function AICoach() {
   const { data: recsData, refetch: refetchRecs } = useQuery({
     queryKey: ['recommendations'],
     queryFn: getRecommendations,
-    onError:  (err: any) => {
-      console.error('Recommendations fetch error', err);
-      toast.error('Failed to load recommendations');
-    },
     select: (data: any) => ({
       recommendations: Array.isArray(data?.recommendations) ? data.recommendations : [],
     }),

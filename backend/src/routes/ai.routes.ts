@@ -1,16 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import Lesson from '../models/Lesson';
 import Subject from '../models/Subject';
 import * as ai from '../services/openai.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
-const USER_ID = 'default-user';
 
 // Generate quiz for a lesson
-router.post('/quiz/:lessonId', async (req: Request, res: Response) => {
+router.post('/quiz/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const quiz = await ai.generateQuiz(lesson.content || lesson.notes, lesson.title);
     res.json(quiz);
   } catch (error) {
@@ -20,10 +22,12 @@ router.post('/quiz/:lessonId', async (req: Request, res: Response) => {
 });
 
 // Generate flashcards
-router.post('/flashcards/:lessonId', async (req: Request, res: Response) => {
+router.post('/flashcards/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const flashcards = await ai.generateFlashcards(lesson.content || lesson.notes, lesson.title);
     res.json(flashcards);
   } catch (error) {
@@ -33,10 +37,12 @@ router.post('/flashcards/:lessonId', async (req: Request, res: Response) => {
 });
 
 // Generate coding challenges
-router.post('/coding-challenge/:lessonId', async (req: Request, res: Response) => {
+router.post('/coding-challenge/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const challenges = await ai.generateCodingChallenge(lesson.content || lesson.notes, lesson.title);
     res.json(challenges);
   } catch (error) {
@@ -46,10 +52,12 @@ router.post('/coding-challenge/:lessonId', async (req: Request, res: Response) =
 });
 
 // Generate interview questions
-router.post('/interview/:lessonId', async (req: Request, res: Response) => {
+router.post('/interview/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const questions = await ai.generateInterviewQuestions(lesson.content || lesson.notes, lesson.title);
     res.json(questions);
   } catch (error) {
@@ -59,10 +67,12 @@ router.post('/interview/:lessonId', async (req: Request, res: Response) => {
 });
 
 // Summarize lesson
-router.post('/summarize/:lessonId', async (req: Request, res: Response) => {
+router.post('/summarize/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const summary = await ai.summarizeLesson(lesson.content || lesson.notes, lesson.title);
 
     // Save summary to lesson
@@ -76,10 +86,12 @@ router.post('/summarize/:lessonId', async (req: Request, res: Response) => {
 });
 
 // Generate practice tasks
-router.post('/practice/:lessonId', async (req: Request, res: Response) => {
+router.post('/practice/:lessonId', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     const tasks = await ai.generatePracticeTasks(lesson.content || lesson.notes, lesson.title);
     res.json(tasks);
   } catch (error) {
@@ -89,12 +101,15 @@ router.post('/practice/:lessonId', async (req: Request, res: Response) => {
 });
 
 // Generate project suggestions for a subject
-router.post('/projects/:subjectId', async (req: Request, res: Response) => {
+router.post('/projects/:subjectId', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
     const subject = await Subject.findById(req.params.subjectId);
-    if (!subject) return res.status(404).json({ error: 'Subject not found' });
+    if (!subject || subject.userId !== userId) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
 
-    const lessons = await Lesson.find({ subjectId: req.params.subjectId, status: 'completed' });
+    const lessons = await Lesson.find({ subjectId: req.params.subjectId, userId, status: 'completed' });
     const lessonTitles = lessons.map((l) => l.title);
 
     const projects = await ai.generateProjectSuggestions(subject.name, lessonTitles);
@@ -104,8 +119,8 @@ router.post('/projects/:subjectId', async (req: Request, res: Response) => {
   }
 });
 
-// AI Chat
-router.post('/chat', async (req: Request, res: Response) => {
+// AI Chat (no user-scoped data — unchanged)
+router.post('/chat', async (req: AuthRequest, res: Response) => {
   try {
     const { messages, context } = req.body;
     const reply = await ai.chatWithAI(messages, context || '');
@@ -116,10 +131,9 @@ router.post('/chat', async (req: Request, res: Response) => {
 });
 
 // Detect weak topics
-router.get('/weak-topics', async (_req: Request, res: Response) => {
+router.get('/weak-topics', async (req: AuthRequest, res: Response) => {
   try {
-    const lessons = await Lesson.find({ userId: USER_ID }).select('title masteryScore status');
-    console.log('Weak topics route - lessons fetched:', lessons);
+    const lessons = await Lesson.find({ userId: req.user!.id }).select('title masteryScore status');
     const lessonData = lessons.map((l) => ({
       title: l.title,
       masteryScore: l.masteryScore,
@@ -134,14 +148,12 @@ router.get('/weak-topics', async (_req: Request, res: Response) => {
 });
 
 // Get recommendations
-router.get('/recommendations', async (_req: Request, res: Response) => {
+router.get('/recommendations', async (req: AuthRequest, res: Response) => {
   try {
-    const completedLessons = await Lesson.find({ userId: USER_ID, status: 'completed' }).select('title');
-    console.log('Recommendations route - completedLessons:', completedLessons);
-    const subjects = await Subject.find({ userId: USER_ID }).select('name');
-    console.log('Recommendations route - subjects:', subjects);
-    const weakLessons = await Lesson.find({ userId: USER_ID, masteryScore: { $lt: 50 } }).select('title');
-    console.log('Recommendations route - weakLessons:', weakLessons);
+    const userId = req.user!.id;
+    const completedLessons = await Lesson.find({ userId, status: 'completed' }).select('title');
+    const subjects = await Subject.find({ userId }).select('name');
+    const weakLessons = await Lesson.find({ userId, masteryScore: { $lt: 50 } }).select('title');
 
     const result = await ai.getRecommendations(
       completedLessons.map((l) => l.title),

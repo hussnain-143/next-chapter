@@ -8,6 +8,7 @@ import lessonsRoutes from './routes/lessons.routes';
 import aiRoutes from './routes/ai.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import authRoutes from './routes/auth.routes';
+import { protect } from './middleware/auth.middleware';
 
 dotenv.config();
 
@@ -28,12 +29,12 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Routes
-app.use('/api/subjects', subjectsRoutes);
-app.use('/api/chapters', chaptersRoutes);
-app.use('/api/lessons', lessonsRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/subjects', protect, subjectsRoutes);
+app.use('/api/chapters', protect, chaptersRoutes);
+app.use('/api/lessons', protect, lessonsRoutes);
+app.use('/api/ai', protect, aiRoutes);
+app.use('/api/analytics', protect, analyticsRoutes);
+app.use('/api/auth', authRoutes); // public — no protect
 
 // Error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

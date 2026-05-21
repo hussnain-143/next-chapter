@@ -50,13 +50,13 @@ export default function RegisterPage() {
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-80" />
         
         <div className="text-center mb-10">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-background/50 border border-border/50 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-center mx-auto mb-6">
             <Image 
               src="/logo.png" 
               alt="Next Chapter Logo" 
-              width={64} 
-              height={64} 
-              className="object-contain"
+              width={72} 
+              height={72} 
+              className="object-contain drop-shadow-lg"
               priority
             />
           </div>

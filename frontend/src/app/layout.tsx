@@ -37,22 +37,25 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning={true}>
         <LayoutWrapper>{children}</LayoutWrapper>
-        <Toaster 
-          position="top-right" 
+        <Toaster
+          position="top-right"
+          gap={8}
+          richColors
           toastOptions={{
-            duration: 3000,
-            className: 'border border-border/50 bg-background/90 backdrop-blur-xl shadow-2xl rounded-2xl p-4',
+            duration: 3500,
+            style: {
+              borderRadius: '16px',
+              fontSize: '13px',
+              fontWeight: '500',
+              padding: '14px 16px',
+              border: '1px solid',
+            },
             classNames: {
-              toast: 'group',
-              title: 'text-foreground font-bold text-[14px]',
-              description: 'text-muted-foreground text-[13px] font-medium mt-1',
-              actionButton: 'bg-primary text-primary-foreground font-bold rounded-lg',
-              cancelButton: 'bg-muted text-muted-foreground font-bold rounded-lg',
-              success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600',
-              error: 'border-rose-500/30 bg-rose-500/10 text-rose-600',
-              icon: 'mr-3',
-            }
-          }} 
+              toast: 'shadow-2xl',
+              title: 'font-bold text-[13.5px] leading-snug',
+              description: 'text-[12px] mt-0.5 leading-relaxed opacity-80',
+            },
+          }}
         />
       </body>
     </html>

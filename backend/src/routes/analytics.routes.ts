@@ -1,17 +1,17 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import * as analyticsService from '../services/analytics.service';
 import StudySession from '../models/StudySession';
 import ExecutionLog from '../models/ExecutionLog';
 import KnowledgeNode from '../models/KnowledgeNode';
 import LearningPath from '../models/LearningPath';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
-const USER_ID = 'default-user';
 
 // Dashboard stats
-router.get('/dashboard', async (_req: Request, res: Response) => {
+router.get('/dashboard', async (req: AuthRequest, res: Response) => {
   try {
-    const stats = await analyticsService.getDashboardStats(USER_ID);
+    const stats = await analyticsService.getDashboardStats(req.user!.id);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get dashboard stats' });
@@ -19,9 +19,9 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
 });
 
 // Weekly report
-router.get('/weekly-report', async (_req: Request, res: Response) => {
+router.get('/weekly-report', async (req: AuthRequest, res: Response) => {
   try {
-    const report = await analyticsService.getWeeklyReport(USER_ID);
+    const report = await analyticsService.getWeeklyReport(req.user!.id);
     res.json(report);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get weekly report' });
@@ -29,9 +29,9 @@ router.get('/weekly-report', async (_req: Request, res: Response) => {
 });
 
 // Subject analytics
-router.get('/subject/:subjectId', async (req: Request, res: Response) => {
+router.get('/subject/:subjectId', async (req: AuthRequest, res: Response) => {
   try {
-    const analytics = await analyticsService.getSubjectAnalytics(req.params.subjectId as string, USER_ID);
+    const analytics = await analyticsService.getSubjectAnalytics(req.params.subjectId as string, req.user!.id);
     res.json(analytics);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get subject analytics' });
@@ -39,9 +39,9 @@ router.get('/subject/:subjectId', async (req: Request, res: Response) => {
 });
 
 // Log study session
-router.post('/session', async (req: Request, res: Response) => {
+router.post('/session', async (req: AuthRequest, res: Response) => {
   try {
-    const session = new StudySession({ ...req.body, userId: USER_ID });
+    const session = new StudySession({ ...req.body, userId: req.user!.id });
     await session.save();
     res.status(201).json(session);
   } catch (error) {
@@ -50,10 +50,10 @@ router.post('/session', async (req: Request, res: Response) => {
 });
 
 // Get study sessions
-router.get('/sessions', async (req: Request, res: Response) => {
+router.get('/sessions', async (req: AuthRequest, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
-    const sessions = await StudySession.find({ userId: USER_ID })
+    const sessions = await StudySession.find({ userId: req.user!.id })
       .populate('lessonId', 'title')
       .populate('subjectId', 'name color')
       .sort({ startTime: -1 })
@@ -65,10 +65,10 @@ router.get('/sessions', async (req: Request, res: Response) => {
 });
 
 // Get execution logs
-router.get('/execution-logs', async (req: Request, res: Response) => {
+router.get('/execution-logs', async (req: AuthRequest, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
-    const logs = await ExecutionLog.find({ userId: USER_ID })
+    const logs = await ExecutionLog.find({ userId: req.user!.id })
       .populate('lessonId', 'title')
       .populate('subjectId', 'name color icon')
       .populate('chapterId', 'title')
@@ -81,9 +81,9 @@ router.get('/execution-logs', async (req: Request, res: Response) => {
 });
 
 // Get knowledge graph data
-router.get('/knowledge-graph', async (_req: Request, res: Response) => {
+router.get('/knowledge-graph', async (req: AuthRequest, res: Response) => {
   try {
-    const nodes = await KnowledgeNode.find({ userId: USER_ID });
+    const nodes = await KnowledgeNode.find({ userId: req.user!.id });
 
     // Build graph data for React Flow
     const graphNodes = nodes.map((node) => ({
@@ -147,9 +147,9 @@ router.get('/knowledge-graph', async (_req: Request, res: Response) => {
 });
 
 // Learning paths
-router.get('/learning-paths', async (_req: Request, res: Response) => {
+router.get('/learning-paths', async (req: AuthRequest, res: Response) => {
   try {
-    const paths = await LearningPath.find({ userId: USER_ID, isActive: true })
+    const paths = await LearningPath.find({ userId: req.user!.id, isActive: true })
       .populate('lessonIds', 'title status masteryScore')
       .sort({ createdAt: -1 });
     res.json(paths);
@@ -158,11 +158,11 @@ router.get('/learning-paths', async (_req: Request, res: Response) => {
   }
 });
 
-router.post('/learning-paths', async (req: Request, res: Response) => {
+router.post('/learning-paths', async (req: AuthRequest, res: Response) => {
   try {
     const path = new LearningPath({
       ...req.body,
-      userId: USER_ID,
+      userId: req.user!.id,
       totalCount: req.body.lessonIds?.length || 0,
     });
     await path.save();

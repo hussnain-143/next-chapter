@@ -15,6 +15,7 @@ export interface ISubject extends Document {
   xpEarned: number;
   tags: string[];
   isArchived: boolean;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +36,7 @@ const SubjectSchema = new Schema<ISubject>(
     xpEarned: { type: Number, default: 0 },
     tags: [{ type: String }],
     isArchived: { type: Boolean, default: false },
+    order: { type: Number, default: 0, index: true },
   },
   { timestamps: true }
 );

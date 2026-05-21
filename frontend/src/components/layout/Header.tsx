@@ -1,38 +1,68 @@
 'use client';
 
-import { useEffect } from 'react';
-import ThemeToggle from './ThemeToggle';
-import { Award, Flame } from 'lucide-react';
+import { Award, Flame, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardStats } from '../../lib/api';
-import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function Header() {
   const { data: stats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: getDashboardStats,
-    refetchInterval: 15000, // Poll every 15s for achievements/xp
+    refetchInterval: 15000,
   });
 
   return (
-    <header className="h-16 border-b border-border/50 bg-card/70 backdrop-blur-2xl flex items-center justify-between px-8 select-none shrink-0 z-40">
-      {/* Stats Badges */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/15 dark:to-orange-500/15 border border-amber-500/20 px-3.5 py-1.5 rounded-full text-amber-600 dark:text-amber-400 font-semibold text-xs shadow-sm transition-all duration-200 hover:scale-105">
-          <Flame className="w-4 h-4 fill-amber-500/30 animate-pulse" />
-          <span>Streak: {stats?.streak || 0} Days</span>
+    <header
+      className="h-14 flex items-center justify-between px-6 shrink-0 z-40"
+      style={{
+        background:   '#252244',
+        borderBottom: '1px solid #352F60',
+        boxShadow:    '0 1px 8px rgba(0,0,0,0.25)',
+      }}
+    >
+      {/* Left — stat pills */}
+      <div className="flex items-center gap-2.5">
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-bold"
+          style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.22)', color: '#FCD34D' }}
+        >
+          <Flame className="w-3.5 h-3.5" style={{ fill: 'rgba(252,211,77,0.4)', color: '#FBBF24' }} />
+          <span>{stats?.streak ?? 0} day streak</span>
         </div>
-        
-        <div className="flex items-center gap-1.5 bg-gradient-to-r from-primary/10 to-accent/10 dark:from-primary/15 dark:to-accent/15 border border-primary/20 px-3.5 py-1.5 rounded-full text-primary font-semibold text-xs shadow-sm transition-all duration-200 hover:scale-105">
-          <Award className="w-4 h-4" />
-          <span>{stats?.totalXP || 0} XP</span>
+
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-bold"
+          style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.24)', color: '#C4B5FD' }}
+        >
+          <Award className="w-3.5 h-3.5" style={{ color: '#A78BFA' }} />
+          <span>{stats?.totalXP ?? 0} XP</span>
         </div>
       </div>
 
-      {/* Theme Toggle Actions */}
-      <div className="flex items-center gap-5">
-        <ThemeToggle />
-      </div>
+      {/* Right — search */}
+      <Link
+        href="/search"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12px] font-medium transition-all duration-150"
+        style={{ background: '#2D2A52', border: '1px solid #352F60', color: '#9B8EC4' }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = '#8B5CF6';
+          (e.currentTarget as HTMLElement).style.color = '#C4B5FD';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = '#352F60';
+          (e.currentTarget as HTMLElement).style.color = '#9B8EC4';
+        }}
+      >
+        <Search className="w-3.5 h-3.5" />
+        <span>Search</span>
+        <kbd
+          className="text-[9px] font-mono px-1.5 py-0.5 rounded-md"
+          style={{ background: '#1C1A2E', border: '1px solid #352F60', color: '#6B6490' }}
+        >
+          ⌘K
+        </kbd>
+      </Link>
     </header>
   );
 }

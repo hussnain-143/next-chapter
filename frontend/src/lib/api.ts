@@ -37,6 +37,8 @@ export const getMe = () => api.get('/auth/me').then((res) => res.data);
 
 // Subject Endpoints
 export const getSubjects = () => api.get<ISubject[]>('/subjects').then((res) => res.data);
+export const reorderSubjects = (order: { id: string; order: number }[]) =>
+  api.put<{ message: string }>('/subjects/reorder', { order }).then((res) => res.data);
 export const getSubject = (id: string) => api.get<ISubject>(`/subjects/${id}`).then((res) => res.data);
 export const createSubject = (data: Partial<ISubject>) => api.post<ISubject>('/subjects', data).then((res) => res.data);
 export const updateSubject = (id: string, data: Partial<ISubject>) => api.put<ISubject>(`/subjects/${id}`, data).then((res) => res.data);

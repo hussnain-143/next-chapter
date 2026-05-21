@@ -1,19 +1,19 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import Lesson from '../models/Lesson';
 import Chapter from '../models/Chapter';
 import Subject from '../models/Subject';
 import ExecutionLog from '../models/ExecutionLog';
 import KnowledgeNode from '../models/KnowledgeNode';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
-const USER_ID = 'default-user';
 
 // Get lessons by chapter
-router.get('/chapter/:chapterId', async (req: Request, res: Response) => {
+router.get('/chapter/:chapterId', async (req: AuthRequest, res: Response) => {
   try {
     const lessons = await Lesson.find({
       chapterId: req.params.chapterId,
-      userId: USER_ID,
+      userId: req.user!.id,
     }).sort({ order: 1 });
     res.json(lessons);
   } catch (error) {
@@ -22,9 +22,9 @@ router.get('/chapter/:chapterId', async (req: Request, res: Response) => {
 });
 
 // Get bookmarked lessons
-router.get('/bookmarked', async (_req: Request, res: Response) => {
+router.get('/bookmarked', async (req: AuthRequest, res: Response) => {
   try {
-    const lessons = await Lesson.find({ userId: USER_ID, isBookmarked: true })
+    const lessons = await Lesson.find({ userId: req.user!.id, isBookmarked: true })
       .populate('chapterId')
       .sort({ updatedAt: -1 });
     res.json(lessons);
@@ -34,11 +34,11 @@ router.get('/bookmarked', async (_req: Request, res: Response) => {
 });
 
 // Get lessons due for review (spaced repetition)
-router.get('/due-review', async (_req: Request, res: Response) => {
+router.get('/due-review', async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date();
     const lessons = await Lesson.find({
-      userId: USER_ID,
+      userId: req.user!.id,
       nextReviewAt: { $lte: now },
       status: { $in: ['completed', 'revision'] },
     }).sort({ nextReviewAt: 1 });
@@ -49,13 +49,13 @@ router.get('/due-review', async (_req: Request, res: Response) => {
 });
 
 // Full text search
-router.get('/search', async (req: Request, res: Response) => {
+router.get('/search', async (req: AuthRequest, res: Response) => {
   try {
     const query = req.query.q as string;
     if (!query) return res.json([]);
 
     const lessons = await Lesson.find(
-      { userId: USER_ID, $text: { $search: query } },
+      { userId: req.user!.id, $text: { $search: query } },
       { score: { $meta: 'textScore' } }
     )
       .sort({ score: { $meta: 'textScore' } })
@@ -67,10 +67,12 @@ router.get('/search', async (req: Request, res: Response) => {
 });
 
 // Get single lesson
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
     res.json(lesson);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch lesson' });
@@ -78,8 +80,9 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create lesson
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
     const chapter = await Chapter.findById(req.body.chapterId);
     if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
 
@@ -88,7 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     const lesson = new Lesson({
       ...req.body,
-      userId: USER_ID,
+      userId,
       subjectId: chapter.subjectId,
       order,
     });
@@ -102,7 +105,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Knowledge node
     await new KnowledgeNode({
-      userId: USER_ID,
+      userId,
       subjectId: chapter.subjectId,
       chapterId: chapter._id,
       lessonId: lesson._id,
@@ -112,7 +115,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Execution log
     await new ExecutionLog({
-      userId: USER_ID,
+      userId,
       lessonId: lesson._id,
       subjectId: chapter.subjectId,
       chapterId: chapter._id,
@@ -127,10 +130,13 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Update lesson
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
     const oldLesson = await Lesson.findById(req.params.id);
-    if (!oldLesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!oldLesson || oldLesson.userId !== userId) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
 
     const lesson = await Lesson.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
@@ -174,7 +180,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
       // Log execution
       await new ExecutionLog({
-        userId: USER_ID,
+        userId,
         lessonId: lesson._id,
         subjectId: lesson.subjectId,
         chapterId: lesson.chapterId,
@@ -196,17 +202,20 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // Toggle bookmark
-router.patch('/:id/bookmark', async (req: Request, res: Response) => {
+router.patch('/:id/bookmark', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
     const lesson = await Lesson.findById(req.params.id);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== userId) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
 
     lesson.isBookmarked = !lesson.isBookmarked;
     await lesson.save();
 
     if (lesson.isBookmarked) {
       await new ExecutionLog({
-        userId: USER_ID,
+        userId,
         lessonId: lesson._id,
         subjectId: lesson.subjectId,
         chapterId: lesson.chapterId,
@@ -221,10 +230,12 @@ router.patch('/:id/bookmark', async (req: Request, res: Response) => {
 });
 
 // Delete lesson
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
-    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+    if (!lesson || lesson.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
 
     await Promise.all([
       Lesson.findByIdAndDelete(req.params.id),
