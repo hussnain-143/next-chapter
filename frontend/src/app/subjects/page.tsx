@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSubjects, createSubject, deleteSubject } from '../../lib/api';
-import { Plus, X, Trash2, BookOpen, Palette, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Plus, X, Trash2, BookOpen, Palette, CheckCircle2, ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +17,21 @@ const PRESETS = [
   { icon: '🔬', color: '#8b5cf6', label: 'Science' },
   { icon: '📐', color: '#06b6d4', label: 'Math' },
   { icon: '🌍', color: '#14b8a6', label: 'Languages' },
+];
+
+const CUSTOM_COLORS = [
+  '#6366f1', // Indigo
+  '#3b82f6', // Blue
+  '#0ea5e9', // Sky
+  '#10b981', // Emerald
+  '#84cc16', // Lime
+  '#eab308', // Yellow
+  '#f59e0b', // Amber
+  '#f97316', // Orange
+  '#ef4444', // Red
+  '#ec4899', // Pink
+  '#d946ef', // Fuchsia
+  '#8b5cf6', // Violet
 ];
 
 export default function Subjects() {
@@ -213,25 +228,25 @@ export default function Subjects() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="glass-card rounded-[2rem] max-w-md w-full p-8 shadow-2xl relative z-10 border border-white/20 dark:border-white/10 overflow-hidden"
+              className="glass-card rounded-[2rem] max-w-lg w-full p-8 shadow-2xl relative z-10 border border-white/20 dark:border-white/10 overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent" />
               
               <button
                 onClick={() => setIsOpen(false)}
-                className="absolute top-5 right-5 p-2 rounded-xl text-muted-foreground hover:bg-accent/10 hover:text-foreground transition"
+                className="absolute top-5 right-5 p-2 rounded-xl text-muted-foreground hover:bg-accent/10 hover:text-foreground transition z-20"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="mb-8">
+              <div className="mb-8 relative z-10">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                     {step === 1 ? <BookOpen className="w-5 h-5" /> : <Palette className="w-5 h-5" />}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-foreground">
-                      {step === 1 ? 'Subject Details' : 'Choose Appearance'}
+                      {step === 1 ? 'Subject Details' : 'Design your Subject'}
                     </h3>
                     <p className="text-xs text-muted-foreground font-medium">
                       Step {step} of 2
@@ -250,7 +265,7 @@ export default function Subjects() {
               </div>
 
               {step === 1 ? (
-                <form onSubmit={handleNextStep} className="space-y-5">
+                <form onSubmit={handleNextStep} className="space-y-5 relative z-10">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Subject Name</label>
                     <input
@@ -260,7 +275,7 @@ export default function Subjects() {
                       placeholder="e.g. Data Structures, React Patterns"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition font-medium"
+                      className="w-full px-4 py-3.5 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition font-medium shadow-sm hover:border-primary/50"
                     />
                   </div>
 
@@ -270,7 +285,7 @@ export default function Subjects() {
                       placeholder="Briefly describe what you'll learn in this subject..."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-3 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition h-28 resize-none font-medium"
+                      className="w-full px-4 py-3.5 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition h-28 resize-none font-medium shadow-sm hover:border-primary/50"
                     />
                   </div>
 
@@ -278,30 +293,36 @@ export default function Subjects() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full py-3.5 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 group mt-4"
+                    className="w-full py-4 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 group mt-6 shadow-lg shadow-primary/20"
                   >
                     Continue
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </motion.button>
                 </form>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Live Preview */}
+                <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+                  {/* Live Preview Card */}
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Preview</label>
-                    <div className="p-4 rounded-xl border border-border/60 flex items-center gap-4 bg-background/50">
-                      <motion.div
-                        key={icon}
-                        initial={{ scale: 0.5, rotate: -10 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border"
-                        style={{ backgroundColor: `${color}15`, color, borderColor: `${color}30` }}
-                      >
-                        {icon}
-                      </motion.div>
-                      <div>
-                        <div className="font-bold text-foreground">{name || 'Subject Name'}</div>
-                        <div className="text-xs text-muted-foreground font-medium line-clamp-1">{description || 'No description'}</div>
+                    <div className="p-4 rounded-2xl border border-border/60 bg-accent/5 flex flex-col justify-between h-32 relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-background/40 to-background/10 z-0" />
+                      <div className="relative z-10 flex items-start gap-4">
+                        <motion.div
+                          key={icon}
+                          initial={{ scale: 0.5, rotate: -15 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl border shadow-inner bg-background"
+                          style={{ borderColor: `${color}40`, boxShadow: `0 4px 20px ${color}20` }}
+                        >
+                          {icon}
+                        </motion.div>
+                        <div className="pt-1 min-w-0">
+                          <div className="font-bold text-lg text-foreground truncate">{name || 'Subject Name'}</div>
+                          <div className="text-xs text-muted-foreground font-medium line-clamp-1 mt-0.5">{description || 'No description added'}</div>
+                        </div>
+                      </div>
+                      <div className="relative z-10 w-full h-1.5 bg-background/50 rounded-full mt-4 overflow-hidden border border-border/50">
+                        <div className="h-full w-1/3 rounded-full" style={{ backgroundColor: color }} />
                       </div>
                     </div>
                   </div>
@@ -318,21 +339,39 @@ export default function Subjects() {
                             setColor(p.color);
                           }}
                           className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
-                            icon === p.icon ? 'border-primary shadow-sm bg-primary/5' : 'border-border/60 bg-background/30 hover:bg-accent/10 hover:border-accent/30'
+                            icon === p.icon ? 'border-primary shadow-sm bg-primary/5 ring-1 ring-primary/20' : 'border-border/60 bg-background/40 hover:bg-accent/10 hover:border-accent/40'
                           }`}
                         >
-                          <span className="text-2xl">{p.icon}</span>
+                          <span className="text-2xl drop-shadow-sm">{p.icon}</span>
                           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{p.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-2">
+                  {/* Add Color Selection */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Theme Color</label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {CUSTOM_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setColor(c)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${color === c ? 'scale-110 ring-2 ring-offset-2 ring-offset-background' : 'hover:scale-110'}`}
+                          style={{ backgroundColor: c, ringColor: c }}
+                        >
+                          {color === c && <Check className="w-4 h-4 text-white" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-border/40">
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="px-4 py-3.5 text-sm font-bold rounded-xl border border-border/80 hover:bg-accent/10 transition-colors flex-1"
+                      className="px-5 py-4 text-sm font-bold rounded-xl border border-border/80 hover:bg-accent/10 transition-colors flex-1"
                     >
                       Back
                     </button>
@@ -341,7 +380,7 @@ export default function Subjects() {
                       whileTap={{ scale: 0.98 }}
                       type="submit"
                       disabled={createMutation.isPending}
-                      className="py-3.5 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 flex-[2]"
+                      className="py-4 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 flex-[2] shadow-lg shadow-primary/20"
                     >
                       {createMutation.isPending ? (
                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
