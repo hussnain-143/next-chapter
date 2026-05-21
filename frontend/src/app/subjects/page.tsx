@@ -1,0 +1,364 @@
+'use client';
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getSubjects, createSubject, deleteSubject } from '../../lib/api';
+import { Plus, X, Trash2, BookOpen, Palette, CheckCircle2, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const PRESETS = [
+  { icon: '📚', color: '#6366f1', label: 'General' },
+  { icon: '💻', color: '#10b981', label: 'Tech' },
+  { icon: '🧠', color: '#ec4899', label: 'Psychology' },
+  { icon: '⚙️', color: '#f59e0b', label: 'Engineering' },
+  { icon: '🎨', color: '#3b82f6', label: 'Arts' },
+  { icon: '🔬', color: '#8b5cf6', label: 'Science' },
+  { icon: '📐', color: '#06b6d4', label: 'Math' },
+  { icon: '🌍', color: '#14b8a6', label: 'Languages' },
+];
+
+export default function Subjects() {
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState(1);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('📚');
+  const [color, setColor] = useState('#6366f1');
+
+  const { data: subjects = [], isLoading } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: getSubjects,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createSubject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      setIsOpen(false);
+      resetForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSubject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast.success('Subject deleted', {
+        description: 'The subject has been successfully removed.'
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setStep(1);
+    setName('');
+    setDescription('');
+    setIcon('📚');
+    setColor('#6366f1');
+  };
+
+  const handleOpenModal = () => {
+    resetForm();
+    setIsOpen(true);
+  };
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setStep(2);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    
+    const toastId = toast.loading('Creating subject...', {
+      description: 'Setting up your new learning path'
+    });
+
+    createMutation.mutate(
+      { name, description, icon, color },
+      {
+        onSuccess: () => {
+          toast.success('Subject created!', {
+            id: toastId,
+            description: `${name} has been added to your library.`,
+            icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          });
+        },
+        onError: (err: any) => {
+          toast.error('Failed to create subject', {
+            id: toastId,
+            description: err.response?.data?.error || 'Something went wrong.'
+          });
+        }
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Subjects Library</h2>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">Manage your study curriculum subjects.</p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleOpenModal}
+          className="flex items-center gap-2 px-5 py-3 text-sm font-bold rounded-xl btn-gradient shadow-lg shadow-primary/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Subject</span>
+        </motion.button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-44 bg-accent/10 rounded-[1.5rem] border border-border/50"></div>
+          ))}
+        </div>
+      ) : subjects.length === 0 ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-[2rem] p-16 text-center space-y-6 max-w-lg mx-auto mt-12 border border-border/50"
+        >
+          <div className="w-20 h-20 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto border border-primary/20 shadow-inner">
+            <BookOpen className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-foreground">No subjects found</h3>
+            <p className="text-sm text-muted-foreground font-medium">Create a subject to begin organizing your chapters, lessons, and track your progress.</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleOpenModal}
+            className="px-6 py-3 text-sm font-bold rounded-xl btn-gradient shadow-lg shadow-primary/20 mx-auto"
+          >
+            Add First Subject
+          </motion.button>
+        </motion.div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {subjects.map((sub) => (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              key={sub._id}
+              className="glass-card rounded-[1.5rem] p-6 flex flex-col justify-between h-48 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 relative group border border-border/60 hover:border-primary/30"
+            >
+              <div className="flex justify-between items-start gap-4">
+                <Link href={`/subjects/${sub._id}`} className="flex items-start gap-4 max-w-[85%] group/link">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner border shrink-0 transition-transform group-hover/link:scale-110"
+                    style={{ backgroundColor: `${sub.color}15`, color: sub.color, borderColor: `${sub.color}30` }}
+                  >
+                    {sub.icon}
+                  </div>
+                  <div className="min-w-0 pt-0.5">
+                    <h4 className="text-base font-bold text-foreground truncate group-hover/link:text-primary transition-colors">{sub.name}</h4>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1 font-medium">{sub.description || 'No description added.'}</p>
+                  </div>
+                </Link>
+
+                <button
+                  onClick={() => deleteMutation.mutate(sub._id)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition opacity-0 group-hover:opacity-100"
+                  title="Delete subject"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2.5 mt-4">
+                <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <span>{sub.completedLessons}/{sub.totalLessons} Lessons</span>
+                  <span>{sub.progressPercent}%</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-black/5 dark:border-white/5">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${sub.progressPercent}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: sub.color }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Modern Multi-step Modal */}
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="glass-card rounded-[2rem] max-w-md w-full p-8 shadow-2xl relative z-10 border border-white/20 dark:border-white/10 overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent" />
+              
+              <button
+                onClick={() => setIsOpen(false)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-muted-foreground hover:bg-accent/10 hover:text-foreground transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                    {step === 1 ? <BookOpen className="w-5 h-5" /> : <Palette className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">
+                      {step === 1 ? 'Subject Details' : 'Choose Appearance'}
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-medium">
+                      Step {step} of 2
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="w-full h-1.5 bg-muted rounded-full mt-4 overflow-hidden">
+                  <motion.div 
+                    initial={{ width: '50%' }}
+                    animate={{ width: step === 1 ? '50%' : '100%' }}
+                    className="h-full bg-primary rounded-full"
+                  />
+                </div>
+              </div>
+
+              {step === 1 ? (
+                <form onSubmit={handleNextStep} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Subject Name</label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      placeholder="e.g. Data Structures, React Patterns"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Description (Optional)</label>
+                    <textarea
+                      placeholder="Briefly describe what you'll learn in this subject..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-background/50 border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition h-28 resize-none font-medium"
+                    />
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    className="w-full py-3.5 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 group mt-4"
+                  >
+                    Continue
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </motion.button>
+                </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Live Preview */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Preview</label>
+                    <div className="p-4 rounded-xl border border-border/60 flex items-center gap-4 bg-background/50">
+                      <motion.div
+                        key={icon}
+                        initial={{ scale: 0.5, rotate: -10 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border"
+                        style={{ backgroundColor: `${color}15`, color, borderColor: `${color}30` }}
+                      >
+                        {icon}
+                      </motion.div>
+                      <div>
+                        <div className="font-bold text-foreground">{name || 'Subject Name'}</div>
+                        <div className="text-xs text-muted-foreground font-medium line-clamp-1">{description || 'No description'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Select Preset</label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {PRESETS.map((p) => (
+                        <button
+                          key={p.icon}
+                          type="button"
+                          onClick={() => {
+                            setIcon(p.icon);
+                            setColor(p.color);
+                          }}
+                          className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                            icon === p.icon ? 'border-primary shadow-sm bg-primary/5' : 'border-border/60 bg-background/30 hover:bg-accent/10 hover:border-accent/30'
+                          }`}
+                        >
+                          <span className="text-2xl">{p.icon}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="px-4 py-3.5 text-sm font-bold rounded-xl border border-border/80 hover:bg-accent/10 transition-colors flex-1"
+                    >
+                      Back
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="py-3.5 text-sm font-bold rounded-xl btn-gradient flex items-center justify-center gap-2 flex-[2]"
+                    >
+                      {createMutation.isPending ? (
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Create Subject
+                          <CheckCircle2 className="w-4 h-4" />
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
