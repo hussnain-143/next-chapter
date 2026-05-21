@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuthStore } from '../../store/useAuthStore';
 import { loginUser } from '../../lib/api';
 import { toast } from 'sonner';
@@ -62,9 +63,16 @@ export default function LoginPage() {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-inner"
+            className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-background/50 border border-border/50 shadow-sm relative overflow-hidden"
           >
-            <Sparkles className="w-8 h-8 text-primary" />
+            <Image 
+              src="/logo.png" 
+              alt="Next Chapter Logo" 
+              width={64} 
+              height={64} 
+              className="object-contain"
+              priority
+            />
           </motion.div>
           <h1 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">Welcome Back</h1>
           <p className="text-sm text-muted-foreground font-medium">Log in to continue your learning journey</p>
