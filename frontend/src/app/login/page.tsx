@@ -8,7 +8,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { loginUser } from '../../lib/api';
 import { toast } from 'sonner';
 import { Sparkles, ArrowRight, Lock, Mail } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -45,26 +44,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      {/* Decorative background blurs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[140px] pointer-events-none animate-pulse-subtle" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[140px] pointer-events-none animate-pulse-subtle" style={{ animationDelay: '1s' }} />
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="glass-card w-full max-w-[420px] p-10 rounded-[2rem] z-10 border border-white/20 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] relative overflow-hidden"
-      >
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="glass-card w-full max-w-[420px] p-10 rounded-[2rem] z-10 border border-border/50 shadow-sm relative overflow-hidden fade-in">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-80" />
         
         <div className="text-center mb-10">
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-background/50 border border-border/50 shadow-sm relative overflow-hidden"
-          >
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-background/50 border border-border/50 shadow-sm relative overflow-hidden">
             <Image 
               src="/logo.png" 
               alt="Next Chapter Logo" 
@@ -73,7 +58,7 @@ export default function LoginPage() {
               className="object-contain"
               priority
             />
-          </motion.div>
+          </div>
           <h1 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">Welcome Back</h1>
           <p className="text-sm text-muted-foreground font-medium">Log in to continue your learning journey</p>
         </div>
@@ -116,12 +101,10 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 rounded-xl btn-gradient font-bold shadow-lg shadow-primary/25 mt-2 flex justify-center items-center gap-2 group text-[15px]"
+            className="w-full py-4 rounded-xl btn-gradient font-bold shadow-sm mt-2 flex justify-center items-center gap-2 group text-[15px] hover:opacity-90 transition-opacity active:scale-[0.98]"
           >
             {isLoading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -131,7 +114,7 @@ export default function LoginPage() {
                 <ArrowRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </>
             )}
-          </motion.button>
+          </button>
         </form>
 
         <div className="mt-8 pt-6 border-t border-border/40 text-center text-sm font-medium text-muted-foreground">
@@ -140,7 +123,7 @@ export default function LoginPage() {
             Create one
           </Link>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
