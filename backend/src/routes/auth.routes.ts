@@ -16,7 +16,7 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    const userExists = await User.findOne({ $or: [{ email }, { username }] });
+    const userExists = await (User as any).findOne({ $or: [{ email }, { username }] });
     if (userExists) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const user = await User.create({
+    const user = await (User as any).create({
       username,
       email,
       passwordHash,
@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await (User as any).findOne({ email });
     if (user && (await bcrypt.compare(password, user.passwordHash))) {
       res.json({
         _id: user._id,
@@ -67,7 +67,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', protect, async (req: AuthRequest, res) => {
   try {
-    const user = await User.findById(req.user?.id).select('-passwordHash');
+    const user = await (User as any).findById(req.user?.id).select('-passwordHash');
     if (user) {
       res.json(user);
     } else {

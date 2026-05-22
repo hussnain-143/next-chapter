@@ -10,7 +10,7 @@ const router = Router();
 // Get chapters by subject
 router.get('/subject/:subjectId', async (req: AuthRequest, res: Response) => {
   try {
-    const chapters = await Chapter.find({
+    const chapters = await (Chapter as any).find({
       subjectId: req.params.subjectId,
       userId: req.user!.id,
     }).sort({ order: 1 });
@@ -23,7 +23,7 @@ router.get('/subject/:subjectId', async (req: AuthRequest, res: Response) => {
 // Get single chapter
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findById(req.params.id);
+    const chapter = await (Chapter as any).findById(req.params.id);
     if (!chapter || chapter.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
@@ -37,17 +37,17 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const lastChapter = await Chapter.findOne({ subjectId: req.body.subjectId }).sort({ order: -1 });
+    const lastChapter = await (Chapter as any).findOne({ subjectId: req.body.subjectId }).sort({ order: -1 });
     const order = lastChapter ? lastChapter.order + 1 : 0;
 
-    const chapter = new Chapter({ ...req.body, userId, order });
+    const chapter = new (Chapter as any)({ ...req.body, userId, order });
     await chapter.save();
 
     // Update subject chapter count
-    await Subject.findByIdAndUpdate(req.body.subjectId, { $inc: { totalChapters: 1 } });
+    await (Subject as any).findByIdAndUpdate(req.body.subjectId, { $inc: { totalChapters: 1 } });
 
     // Create knowledge node
-    await new KnowledgeNode({
+    await new (KnowledgeNode as any)({
       userId,
       subjectId: req.body.subjectId,
       chapterId: chapter._id,
@@ -64,14 +64,14 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update chapter
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findById(req.params.id);
+    const chapter = await (Chapter as any).findById(req.params.id);
     if (!chapter || chapter.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
 
-    const updated = await Chapter.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await (Chapter as any).findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    await KnowledgeNode.findOneAndUpdate(
+    await (KnowledgeNode as any).findOneAndUpdate(
       { chapterId: chapter._id, type: 'chapter' },
       { label: updated!.title }
     );
@@ -85,18 +85,18 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Delete chapter (cascade)
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findById(req.params.id);
+    const chapter = await (Chapter as any).findById(req.params.id);
     if (!chapter || chapter.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
 
-    const lessonCount = await Lesson.countDocuments({ chapterId: chapter._id });
+    const lessonCount = await (Lesson as any).countDocuments({ chapterId: chapter._id });
 
     await Promise.all([
-      Lesson.deleteMany({ chapterId: chapter._id }),
-      KnowledgeNode.deleteMany({ chapterId: chapter._id }),
-      Chapter.findByIdAndDelete(req.params.id),
-      Subject.findByIdAndUpdate(chapter.subjectId, {
+      (Lesson as any).deleteMany({ chapterId: chapter._id }),
+      (KnowledgeNode as any).deleteMany({ chapterId: chapter._id }),
+      (Chapter as any).findByIdAndDelete(req.params.id),
+      (Subject as any).findByIdAndUpdate(chapter.subjectId, {
         $inc: { totalChapters: -1, totalLessons: -lessonCount },
       }),
     ]);
@@ -113,7 +113,7 @@ router.put('/reorder/:subjectId', async (req: AuthRequest, res: Response) => {
     const { order } = req.body; // array of { id, order }
     await Promise.all(
       order.map((item: { id: string; order: number }) =>
-        Chapter.findByIdAndUpdate(item.id, { order: item.order })
+        (Chapter as any).findByIdAndUpdate(item.id, { order: item.order })
       )
     );
     res.json({ message: 'Chapters reordered' });
@@ -126,19 +126,19 @@ router.put('/reorder/:subjectId', async (req: AuthRequest, res: Response) => {
 router.post('/:id/recalculate', async (req: AuthRequest, res: Response) => {
   try {
     const chapterId = req.params.id;
-    const chapter = await Chapter.findById(chapterId);
+    const chapter = await (Chapter as any).findById(chapterId);
     if (!chapter || chapter.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
 
-    const lessons = await Lesson.find({ chapterId });
+    const lessons = await (Lesson as any).find({ chapterId });
 
     const totalLessons = lessons.length;
-    const completedLessons = lessons.filter((l) => l.status === 'completed').length;
+    const completedLessons = lessons.filter((l: any) => l.status === 'completed').length;
     const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-    const totalTimeSpent = lessons.reduce((acc, l) => acc + l.timeSpent, 0);
+    const totalTimeSpent = lessons.reduce((acc: number, l: any) => acc + l.timeSpent, 0);
 
-    const updated = await Chapter.findByIdAndUpdate(
+    const updated = await (Chapter as any).findByIdAndUpdate(
       chapterId,
       { totalLessons, completedLessons, progressPercent, totalTimeSpent },
       { new: true }
