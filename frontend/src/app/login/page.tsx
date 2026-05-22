@@ -7,36 +7,50 @@ import Image from 'next/image';
 import { useAuthStore } from '../../store/useAuthStore';
 import { loginUser } from '../../lib/api';
 import { toast } from 'sonner';
-import { Sparkles, ArrowRight, Lock, Mail } from 'lucide-react';
+import {
+  Sparkles,
+  ArrowRight,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     const toastId = toast.loading('Authenticating...', {
-      description: 'Verifying your credentials'
+      description: 'Verifying your credentials',
     });
-    
+
     try {
       const data = await loginUser(email, password);
+
       setAuth(data, data.token);
+
       toast.success('Welcome back!', {
         id: toastId,
         description: 'Successfully logged into your account.',
-        icon: <Sparkles className="w-5 h-5 text-primary" />
+        icon: <Sparkles className="w-5 h-5 text-primary" />,
       });
+
       router.push('/');
     } catch (error: any) {
       toast.error('Authentication failed', {
         id: toastId,
-        description: error.response?.data?.error || 'Please check your email and password.',
+        description:
+          error.response?.data?.error ||
+          'Please check your email and password.',
       });
     } finally {
       setIsLoading(false);
@@ -47,29 +61,40 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
       <div className="glass-card w-full max-w-[420px] p-10 rounded-[2rem] z-10 border border-border/50 shadow-sm relative overflow-hidden fade-in">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-80" />
-        
+
         <div className="text-center mb-10">
           <div className="flex items-center justify-center mx-auto mb-6">
-            <Image 
-              src="/logo.png" 
-              alt="Next Chapter Logo" 
-              width={72} 
-              height={72} 
-              className="object-contain drop-shadow-lg"
+            <Image
+              src="/logo.png"
+              alt="Next Chapter Logo"
+              width={72}
+              height={72}
+              className="object-contain drop-shadow-lg rounded-xl"
               priority
             />
           </div>
-          <h1 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">Welcome Back</h1>
-          <p className="text-sm text-muted-foreground font-medium">Log in to continue your learning journey</p>
+
+          <h1 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">
+            Welcome Back
+          </h1>
+
+          <p className="text-sm text-muted-foreground font-medium">
+            Log in to continue your learning journey
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email */}
           <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors group-focus-within:text-primary">Email Address</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors group-focus-within:text-primary">
+              Email Address
+            </label>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-primary transition-colors">
                 <Mail className="h-4 w-4" />
               </div>
+
               <input
                 type="email"
                 value={email}
@@ -81,26 +106,50 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Password */}
           <div className="space-y-2 group">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors group-focus-within:text-primary">Password</label>
-              <Link href="#" className="text-[11px] font-semibold text-primary/80 hover:text-primary transition-colors">Forgot?</Link>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors group-focus-within:text-primary">
+                Password
+              </label>
+
+              <Link
+                href="#"
+                className="text-[11px] font-semibold text-primary/80 hover:text-primary transition-colors"
+              >
+                Forgot?
+              </Link>
             </div>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-primary transition-colors">
                 <Lock className="h-4 w-4" />
               </div>
+
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-background/50 border border-border/80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm font-medium shadow-sm hover:border-primary/50"
+                className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-background/50 border border-border/80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm font-medium shadow-sm hover:border-primary/50"
                 placeholder="••••••••"
               />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-primary transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
@@ -118,8 +167,11 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-border/40 text-center text-sm font-medium text-muted-foreground">
-          Don't have an account?{' '}
-          <Link href="/register" className="text-primary hover:text-primary/80 hover:underline transition-colors font-bold ml-1">
+          Don't have an account?
+          <Link
+            href="/register"
+            className="text-primary hover:text-primary/80 hover:underline transition-colors font-bold ml-1"
+          >
             Create one
           </Link>
         </div>

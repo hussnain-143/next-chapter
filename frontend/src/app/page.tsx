@@ -48,9 +48,6 @@ export default function Dashboard() {
           <BookOpen className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold text-foreground">Failed to connect to the backend API</h3>
-        <p className="text-sm text-muted-foreground max-w-sm text-center">
-          Make sure your MongoDB server and local API are running on <code className="bg-accent/80 px-1 py-0.5 rounded text-primary">localhost:5000</code>.
-        </p>
       </div>
     );
   }
