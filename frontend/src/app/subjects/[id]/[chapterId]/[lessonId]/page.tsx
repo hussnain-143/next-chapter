@@ -38,6 +38,10 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [isEditingLesson, setIsEditingLesson] = useState(false);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonDifficulty, setLessonDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [isSavingLessonDetails, setIsSavingLessonDetails] = useState(false);
 
   // AI Content Modals State
   const [activeModal, setActiveModal] = useState<'quiz' | 'flashcards' | 'tasks' | 'challenges' | null>(null);
@@ -56,6 +60,8 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
   useEffect(() => {
     if (lesson) {
       setNotes(lesson.notes || '');
+      setLessonTitle(lesson.title);
+      setLessonDifficulty(lesson.difficulty || 'beginner');
     }
   }, [lesson]);
 
@@ -71,7 +77,8 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
     },
     onError: () => {
       setIsSaving(false);
-      alert('Unable to save notes. Please try again.');
+      setIsSavingLessonDetails(false);
+      alert('Unable to save lesson changes. Please try again.');
     },
   });
 
@@ -79,6 +86,20 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
     if (!isDirty) return;
     setIsSaving(true);
     updateMutation.mutate({ notes });
+  };
+
+  const handleSaveLessonDetails = async () => {
+    if (!lessonTitle.trim()) return;
+    setIsSavingLessonDetails(true);
+    updateMutation.mutate(
+      { title: lessonTitle.trim(), difficulty: lessonDifficulty },
+      {
+        onSuccess: () => {
+          setIsSavingLessonDetails(false);
+          setIsEditingLesson(false);
+        },
+      }
+    );
   };
 
   const handleStatusChange = (status: string) => {
@@ -141,7 +162,16 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
     });
   };
 
-  if (isLoading || !lesson) return <div className="text-center py-12">Loading lesson content...</div>;
+  if (isLoading || !lesson) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          <p className="text-sm font-semibold">Loading lesson details…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-12 relative">
@@ -170,11 +200,50 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
         <div className="lg:col-span-2 space-y-6">
           {/* Header */}
           <div className="glass-card rounded-2xl p-6 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary uppercase font-mono tracking-wider">{lesson.difficulty}</span>
-              <span className="text-[10px] font-semibold text-muted-foreground">Lesson node</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary uppercase font-mono tracking-wider">{lessonDifficulty}</span>
+              <span className="text-[10px] font-semibold text-muted-foreground">Study node</span>
+              <button
+                onClick={() => setIsEditingLesson((prev) => !prev)}
+                className="ml-auto text-[10px] font-semibold uppercase tracking-[0.18em] px-3 py-1 rounded-full border border-border/80 bg-card text-foreground hover:bg-accent/40 transition"
+              >
+                {isEditingLesson ? 'Cancel' : 'Edit Lesson'}
+              </button>
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">{lesson.title}</h2>
+
+            {isEditingLesson ? (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase block">Lesson title</label>
+                  <input
+                    value={lessonTitle}
+                    onChange={(e) => setLessonTitle(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-card border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase block">Difficulty</label>
+                  <select
+                    value={lessonDifficulty}
+                    onChange={(e) => setLessonDifficulty(e.target.value as 'beginner' | 'intermediate' | 'advanced')}
+                    className="w-full px-3 py-2 text-sm bg-card border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveLessonDetails}
+                  disabled={isSavingLessonDetails}
+                  className="px-4 py-2.5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSavingLessonDetails ? 'Saving...' : 'Save Lesson'}
+                </button>
+              </div>
+            ) : (
+              <h2 className="text-xl font-bold tracking-tight text-foreground">{lesson.title}</h2>
+            )}
           </div>
 
           {/* Notes Area */}

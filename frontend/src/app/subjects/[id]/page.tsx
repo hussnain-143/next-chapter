@@ -405,7 +405,16 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
     );
   }
 
-  if (!subject) return <div className="text-center py-12">Loading subject details...</div>;
+  if (!subject) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          <p className="text-sm font-semibold">Loading subject details…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-12">
