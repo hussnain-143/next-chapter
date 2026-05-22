@@ -15,11 +15,34 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5050;
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL as string,
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://next-chapter-tawny.vercel.app',
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('CORS not allowed'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// IMPORTANT
+app.options('*', cors({
+  origin: allowedOrigins,
   credentials: true,
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
