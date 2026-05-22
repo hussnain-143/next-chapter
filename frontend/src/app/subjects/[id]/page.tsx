@@ -523,11 +523,15 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
             </button>
 
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-foreground">Add New Chapter</h3>
-              <p className="text-xs text-muted-foreground">Add a syllabus subdivision to your subject space.</p>
+              <h3 className="text-base font-bold text-foreground">
+                {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {editingChapter ? 'Update chapter details before saving.' : 'Add a syllabus subdivision to your subject space.'}
+              </p>
             </div>
 
-            <form onSubmit={handleAddChapter} className="space-y-4">
+            <form onSubmit={handleChapterFormSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-muted-foreground uppercase block">Chapter Title</label>
                 <input
@@ -556,6 +560,57 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
                 className="w-full py-2.5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 transition duration-200"
               >
                 {createChapterMutation.isPending ? 'Adding...' : 'Add Chapter'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Subject Edit Modal */}
+      {showSubjectModal && (
+        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl relative">
+            <button
+              onClick={() => setShowSubjectModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:bg-accent/40 hover:text-foreground transition"
+            >
+              <Trash2 className="w-4 h-4 rotate-45" />
+            </button>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-foreground">Edit Subject</h3>
+              <p className="text-xs text-muted-foreground">Update the subject title and overview.</p>
+            </div>
+
+            <form onSubmit={handleSubjectSave} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase block">Subject Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Artificial Intelligence Fundamentals"
+                  value={subjectName}
+                  onChange={(e) => setSubjectName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-card border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase block">Subject Description</label>
+                <textarea
+                  placeholder="Update the subject description..."
+                  value={subjectDesc}
+                  onChange={(e) => setSubjectDesc(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-card border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition h-24 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={updateSubjectMutation.isPending}
+                className="w-full py-2.5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 transition duration-200"
+              >
+                {updateSubjectMutation.isPending ? 'Saving...' : 'Save Subject'}
               </button>
             </form>
           </div>

@@ -9,14 +9,14 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const token = useAuthStore((state) => state.token);
   const router = useRouter();
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (mounted) {
+    if (hydrated) {
       const publicRoutes = ['/login', '/register'];
       const isPublicRoute = publicRoutes.includes(pathname);
 
@@ -26,11 +26,19 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         router.push('/');
       }
     }
-  }, [user, token, pathname, router, mounted]);
+  }, [user, token, pathname, router, hydrated]);
 
-  // Avoid rendering protected content or flickering on initial mount
-  if (!mounted) return null;
-  
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          <p className="text-sm font-semibold">Loading user session…</p>
+        </div>
+      </div>
+    );
+  }
+
   const isPublicRoute = ['/login', '/register'].includes(pathname);
   if (!token && !isPublicRoute) return null;
 
