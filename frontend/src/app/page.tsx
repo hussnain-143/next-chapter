@@ -9,8 +9,7 @@ import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import { 
   BookOpen, 
   Hourglass, 
-  Sparkles, 
-  Trophy, 
+  Sparkles,  
   CheckCircle,
   TrendingUp,
   Brain,
