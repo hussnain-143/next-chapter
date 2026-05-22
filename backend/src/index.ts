@@ -21,7 +21,9 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: function (origin : any, callback : any) {
+  origin: function (origin: any, callback: any) {
+    console.log('CORS request from origin:', origin);
+    
     // Allow requests with no origin (mobile apps, curl, etc)
     if (!origin) return callback(null, true);
 
@@ -29,14 +31,17 @@ const corsOptions = {
       return callback(null, true);
     }
 
+    console.log('CORS rejected origin:', origin);
     return callback(new Error('CORS not allowed'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200, // For legacy browsers
+  maxAge: 86400, // 24 hours
 };
 
-// Handle preflight requests for all routes
+// Handle preflight requests FIRST - before any other middleware
 app.options('*', cors(corsOptions));
 
 // Apply CORS to all routes
