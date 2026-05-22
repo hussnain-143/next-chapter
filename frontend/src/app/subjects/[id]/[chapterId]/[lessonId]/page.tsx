@@ -37,6 +37,7 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
 
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   // AI Content Modals State
   const [activeModal, setActiveModal] = useState<'quiz' | 'flashcards' | 'tasks' | 'challenges' | null>(null);
@@ -65,21 +66,20 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
       queryClient.invalidateQueries({ queryKey: ['lesson', lessonId] });
       queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      setIsSaving(false);
+      setIsDirty(false);
+    },
+    onError: () => {
+      setIsSaving(false);
+      alert('Unable to save notes. Please try again.');
     },
   });
 
-  // Debounced auto-save effect
-  useEffect(() => {
-    if (lesson && notes !== lesson.notes) {
-      setIsSaving(true);
-      const timer = setTimeout(() => {
-        updateMutation.mutate({ notes }, {
-          onSuccess: () => setIsSaving(false)
-        });
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [notes]);
+  const handleSaveNotes = async () => {
+    if (!isDirty) return;
+    setIsSaving(true);
+    updateMutation.mutate({ notes });
+  };
 
   const handleStatusChange = (status: string) => {
     updateMutation.mutate({ status });
@@ -184,15 +184,27 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
                 <FileText className="w-4 h-4 text-muted-foreground" />
                 <span>Study Notes</span>
               </span>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {isSaving ? 'Saving...' : 'Auto-saved'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {isSaving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'Saved'}
+                </span>
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={!isDirty || isSaving}
+                  className="px-3 py-1.5 text-[10px] font-semibold rounded-xl border border-border/60 bg-card text-foreground hover:bg-accent/40 transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Save Notes
+                </button>
+              </div>
             </div>
             <textarea
               className="w-full h-[380px] bg-transparent border-0 focus:outline-none focus:ring-0 text-sm leading-relaxed text-foreground placeholder-muted-foreground resize-none"
-              placeholder="Start drafting your study notes here. Supports auto-saving as you type..."
+              placeholder="Start drafting your study notes here. Save manually when you're ready..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                setIsDirty(true);
+              }}
             />
           </div>
 

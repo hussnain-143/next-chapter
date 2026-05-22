@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getSubject, 
@@ -10,8 +10,13 @@ import {
   getLessons, 
   createLesson, 
   deleteLesson,
+  updateChapter,
+  updateSubject,
+  reorderChapters,
+  reorderLessons,
   generateProjects
 } from '@/lib/api';
+import { IChapter, ISubject, ILesson } from '@/types';
 import { 
   Plus, 
   Trash2, 
@@ -22,7 +27,9 @@ import {
   Clock, 
   Sparkles,
   ArrowRight,
-  Code
+  Code,
+  GripVertical,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,6 +56,18 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
   const [aiProjects, setAiProjects] = useState<any[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
+  // Subject edit state
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [subjectName, setSubjectName] = useState('');
+  const [subjectDesc, setSubjectDesc] = useState('');
+
+  // Chapter edit & reorder state
+  const [editingChapter, setEditingChapter] = useState<IChapter | null>(null);
+  const [draggedChapterId, setDraggedChapterId] = useState<string | null>(null);
+  const [chapterDragOverId, setChapterDragOverId] = useState<string | null>(null);
+  const [localChapterOrder, setLocalChapterOrder] = useState<IChapter[] | null>(null);
+  const chapterDragNode = useRef<HTMLDivElement | null>(null);
+
   // Queries
   const { data: subject } = useQuery({
     queryKey: ['subject', subjectId],
@@ -59,6 +78,21 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
     queryKey: ['chapters', subjectId],
     queryFn: () => getChapters(subjectId),
   });
+
+  useEffect(() => {
+    if (subject) {
+      setSubjectName(subject.name);
+      setSubjectDesc(subject.description || '');
+    }
+  }, [subject]);
+
+  useEffect(() => {
+    if (!draggedChapterId) {
+      setLocalChapterOrder(null);
+    }
+  }, [chapters, draggedChapterId]);
+
+  const displayChapters = localChapterOrder ?? chapters;
 
   // Mutations
   const createChapterMutation = useMutation({
@@ -75,6 +109,32 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
     mutationFn: deleteChapter,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
+    },
+  });
+
+  const updateChapterMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<IChapter> }) => updateChapter(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
+      setShowChapterModal(false);
+      setEditingChapter(null);
+      setChapterTitle('');
+      setChapterDesc('');
+    },
+  });
+
+  const updateSubjectMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<ISubject> }) => updateSubject(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject', subjectId] });
+      setShowSubjectModal(false);
+    },
+  });
+
+  const reorderChapterMutation = useMutation({
+    mutationFn: (order: { id: string; order: number }[]) => reorderChapters(subjectId, order),
+    onError: () => {
+      setLocalChapterOrder(null);
     },
   });
 
@@ -104,10 +164,22 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
     },
   });
 
-  const handleAddChapter = (e: React.FormEvent) => {
+  const handleChapterFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chapterTitle.trim()) return;
-    createChapterMutation.mutate({ subjectId: subjectId as any, title: chapterTitle, description: chapterDesc });
+
+    if (editingChapter) {
+      updateChapterMutation.mutate({
+        id: editingChapter._id,
+        data: { title: chapterTitle, description: chapterDesc },
+      });
+    } else {
+      createChapterMutation.mutate({
+        subjectId: subjectId as any,
+        title: chapterTitle,
+        description: chapterDesc,
+      });
+    }
   };
 
   const handleAddLesson = (e: React.FormEvent) => {
@@ -121,6 +193,68 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
       status: 'pending',
     });
   };
+
+  const openChapterModal = (chapter?: IChapter) => {
+    if (chapter) {
+      setEditingChapter(chapter);
+      setChapterTitle(chapter.title);
+      setChapterDesc(chapter.description || '');
+    } else {
+      setEditingChapter(null);
+      setChapterTitle('');
+      setChapterDesc('');
+    }
+    setShowChapterModal(true);
+  };
+
+  const openSubjectEditModal = () => {
+    if (!subject) return;
+    setSubjectName(subject.name);
+    setSubjectDesc(subject.description || '');
+    setShowSubjectModal(true);
+  };
+
+  const handleSubjectSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subjectName.trim()) return;
+    updateSubjectMutation.mutate({
+      id: subjectId,
+      data: { name: subjectName, description: subjectDesc },
+    });
+  };
+
+  const handleChapterDragStart = useCallback((e: React.DragEvent, id: string) => {
+    setDraggedChapterId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => {
+      if (chapterDragNode.current) chapterDragNode.current.style.opacity = '0.4';
+    }, 0);
+  }, []);
+
+  const handleChapterDragEnter = useCallback((id: string) => {
+    if (id === draggedChapterId) return;
+    setChapterDragOverId(id);
+    setLocalChapterOrder((prev) => {
+      const list = prev ?? chapters;
+      const from = list.findIndex((c) => c._id === draggedChapterId);
+      const to = list.findIndex((c) => c._id === id);
+      if (from === -1 || to === -1) return prev;
+      const next = [...list];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, [chapters, draggedChapterId]);
+
+  const handleChapterDragEnd = useCallback(() => {
+    if (chapterDragNode.current) chapterDragNode.current.style.opacity = '1';
+    setDraggedChapterId(null);
+    setChapterDragOverId(null);
+
+    const ordered = localChapterOrder ?? chapters;
+    const payload = ordered.map((chapter, index) => ({ id: chapter._id, order: index }));
+    reorderChapterMutation.mutate(payload);
+  }, [chapters, localChapterOrder, reorderChapterMutation]);
 
   const handleAILearnProjects = async () => {
     setLoadingProjects(true);
@@ -144,11 +278,60 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
 
   // Helper component to display lessons list inside chapter row
   function LessonList({ chapterId }: { chapterId: string }) {
+    const queryClient = useQueryClient();
+    const [draggedLessonId, setDraggedLessonId] = useState<string | null>(null);
+    const [lessonDragOverId, setLessonDragOverId] = useState<string | null>(null);
+    const [localLessonOrder, setLocalLessonOrder] = useState<ILesson[] | null>(null);
+    const lessonDragNode = useRef<HTMLDivElement | null>(null);
+
     const { data: lessons = [], isLoading } = useQuery({
       queryKey: ['lessons', chapterId],
       queryFn: () => getLessons(chapterId),
       enabled: !!expandedChapters[chapterId],
     });
+
+    useEffect(() => {
+      if (!draggedLessonId) {
+        setLocalLessonOrder(null);
+      }
+    }, [lessons, draggedLessonId]);
+
+    const displayLessons = localLessonOrder ?? lessons;
+
+    const handleLessonDragStart = useCallback((e: React.DragEvent, id: string) => {
+      setDraggedLessonId(id);
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => {
+        if (lessonDragNode.current) lessonDragNode.current.style.opacity = '0.4';
+      }, 0);
+    }, []);
+
+    const handleLessonDragEnter = useCallback((id: string) => {
+      if (id === draggedLessonId) return;
+      setLessonDragOverId(id);
+      setLocalLessonOrder((prev) => {
+        const list = prev ?? lessons;
+        const from = list.findIndex((l) => l._id === draggedLessonId);
+        const to = list.findIndex((l) => l._id === id);
+        if (from === -1 || to === -1) return prev;
+        const next = [...list];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      });
+    }, [draggedLessonId, lessons]);
+
+    const handleLessonDragEnd = useCallback(() => {
+      if (lessonDragNode.current) lessonDragNode.current.style.opacity = '1';
+      setDraggedLessonId(null);
+      setLessonDragOverId(null);
+
+      const ordered = localLessonOrder ?? lessons;
+      const payload = ordered.map((lesson, index) => ({ id: lesson._id, order: index }));
+      reorderLessons(chapterId, payload).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['lessons', chapterId] });
+      });
+    }, [chapterId, localLessonOrder, lessons, queryClient]);
 
     if (isLoading) {
       return <div className="pl-12 py-3 text-xs text-muted-foreground animate-pulse">Loading lessons...</div>;
@@ -156,36 +339,49 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
 
     return (
       <div className="pl-12 pr-6 pb-4 space-y-2 border-t border-border/20 pt-3 bg-accent/5">
-        {lessons.length === 0 ? (
+        {displayLessons.length === 0 ? (
           <p className="text-xs text-muted-foreground italic py-1">No lessons added to this chapter yet.</p>
         ) : (
-          lessons.map((lesson) => (
-            <div key={lesson._id} className="flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card hover:bg-accent/20 transition group">
-              <Link href={`/subjects/${subjectId}/${chapterId}/${lesson._id}`} className="flex items-center gap-3.5 flex-1 min-w-0">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 capitalize ${
-                  lesson.status === 'completed' ? 'bg-accent/10 text-accent border border-accent/20' :
-                  lesson.status === 'revision' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                  lesson.status === 'in-progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-muted text-muted-foreground border border-border/80'
-                }`}>
-                  {lesson.status}
-                </span>
-                <span className="text-xs font-semibold text-foreground truncate">{lesson.title}</span>
-              </Link>
+          displayLessons.map((lesson) => {
+            const isDragging = draggedLessonId === lesson._id;
+            const isOver = lessonDragOverId === lesson._id;
+            return (
+              <div
+                key={lesson._id}
+                ref={isDragging ? lessonDragNode : null}
+                draggable
+                onDragStart={(e) => handleLessonDragStart(e, lesson._id)}
+                onDragEnter={() => handleLessonDragEnter(lesson._id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnd={handleLessonDragEnd}
+                className={`flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card hover:bg-accent/20 transition group ${isDragging ? 'opacity-40 scale-[0.97]' : ''} ${isOver ? 'ring-2 ring-primary/30 border-primary/30' : ''}`}
+              >
+                <Link href={`/subjects/${subjectId}/${chapterId}/${lesson._id}`} className="flex items-center gap-3.5 flex-1 min-w-0">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 capitalize ${
+                    lesson.status === 'completed' ? 'bg-accent/10 text-accent border border-accent/20' :
+                    lesson.status === 'revision' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                    lesson.status === 'in-progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-muted text-muted-foreground border border-border/80'
+                  }`}>
+                    {lesson.status}
+                  </span>
+                  <span className="text-xs font-semibold text-foreground truncate">{lesson.title}</span>
+                </Link>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground font-semibold uppercase">{lesson.difficulty}</span>
-                <button
-                  onClick={() => {
-                    setActiveChapterId(chapterId);
-                    deleteLessonMutation.mutate(lesson._id);
-                  }}
-                  className="p-1 rounded text-muted-foreground hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase">{lesson.difficulty}</span>
+                  <button
+                    onClick={() => {
+                      setActiveChapterId(chapterId);
+                      deleteLessonMutation.mutate(lesson._id);
+                    }}
+                    className="p-1 rounded text-muted-foreground hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     );
@@ -214,13 +410,19 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
         {/* Action controls */}
         <div className="flex flex-col gap-3 shrink-0">
           <button
-            onClick={() => setShowChapterModal(true)}
+            onClick={openSubjectEditModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-border/60 bg-card text-foreground hover:bg-accent/10 transition shadow-sm"
+          >
+            <Pencil className="w-4 h-4" />
+            <span>Edit Subject</span>
+          </button>
+          <button
+            onClick={() => openChapterModal()}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Add Chapter</span>
           </button>
-          
           <button
             onClick={handleAILearnProjects}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15 transition"
@@ -247,7 +449,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
           </div>
         ) : (
           <div className="space-y-3">
-            {chapters.map((chapter) => {
+            {displayChapters.map((chapter) => {
               const isExpanded = !!expandedChapters[chapter._id];
               return (
                 <div key={chapter._id} className="glass-card rounded-2xl overflow-hidden border border-border/40">
@@ -272,6 +474,14 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
                           <div className="h-full bg-primary" style={{ width: `${chapter.progressPercent}%` }}></div>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => openChapterModal(chapter)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-[11px] font-semibold text-foreground hover:bg-accent/40 transition"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit Chapter</span>
+                      </button>
 
                       <button
                         onClick={() => {

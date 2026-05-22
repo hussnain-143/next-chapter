@@ -61,6 +61,8 @@ export const getLessons = (chapterId: string) => api.get<ILesson[]>(`/lessons/ch
 export const getLesson = (id: string) => api.get<ILesson>(`/lessons/${id}`).then((res) => res.data);
 export const createLesson = (data: Partial<ILesson>) => api.post<ILesson>('/lessons', data).then((res) => res.data);
 export const updateLesson = (id: string, data: Partial<ILesson>) => api.put<ILesson>(`/lessons/${id}`, data).then((res) => res.data);
+export const reorderLessons = (chapterId: string, order: { id: string; order: number }[]) =>
+  api.put<{ message: string }>(`/lessons/reorder/${chapterId}`, { order }).then((res) => res.data);
 export const deleteLesson = (id: string) => api.delete<{ message: string }>(`/lessons/${id}`).then((res) => res.data);
 export const toggleBookmark = (id: string) => api.patch<ILesson>(`/lessons/${id}/bookmark`).then((res) => res.data);
 export const getBookmarkedLessons = () => api.get<ILesson[]>('/lessons/bookmarked').then((res) => res.data);

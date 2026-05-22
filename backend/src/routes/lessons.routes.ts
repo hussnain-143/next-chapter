@@ -66,6 +66,26 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Reorder lessons
+router.put('/reorder/:chapterId', async (req: AuthRequest, res: Response) => {
+  try {
+    const { order } = req.body;
+    if (!Array.isArray(order)) {
+      return res.status(400).json({ error: 'Order must be an array' });
+    }
+
+    await Promise.all(
+      order.map((item: { id: string; order: number }) =>
+        Lesson.findOneAndUpdate({ _id: item.id, chapterId: req.params.chapterId, userId: req.user!.id }, { order: item.order })
+      )
+    );
+
+    res.json({ message: 'Lessons reordered' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to reorder lessons' });
+  }
+});
+
 // Get single lesson
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
