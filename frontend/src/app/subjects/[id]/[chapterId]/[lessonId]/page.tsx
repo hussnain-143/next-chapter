@@ -198,8 +198,8 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
               </div>
             </div>
             <textarea
-              className="w-full h-[380px] bg-transparent border-0 focus:outline-none focus:ring-0 text-sm leading-relaxed text-foreground placeholder-muted-foreground resize-none"
-              placeholder="Start drafting your study notes here. Save manually when you're ready..."
+              className="w-full h-[380px] bg-transparent border-0 p-4 rounded-xl focus:outline-none focus:ring-0 text-sm leading-relaxed text-foreground placeholder-muted-foreground resize-none"
+              placeholder="Start drafting your study notes here."
               value={notes}
               onChange={(e) => {
                 setNotes(e.target.value);

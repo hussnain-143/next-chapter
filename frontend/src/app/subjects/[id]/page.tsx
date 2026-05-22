@@ -69,7 +69,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
   const chapterDragNode = useRef<HTMLDivElement | null>(null);
 
   // Queries
-  const { data: subject } = useQuery({
+  const { data: subject, isLoading: loadingSubject } = useQuery({
     queryKey: ['subject', subjectId],
     queryFn: () => getSubject(subjectId),
   });
@@ -85,12 +85,6 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
       setSubjectDesc(subject.description || '');
     }
   }, [subject]);
-
-  useEffect(() => {
-    if (!draggedChapterId) {
-      setLocalChapterOrder(null);
-    }
-  }, [chapters, draggedChapterId]);
 
   const displayChapters = localChapterOrder ?? chapters;
 
@@ -133,10 +127,34 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
 
   const reorderChapterMutation = useMutation({
     mutationFn: (order: { id: string; order: number }[]) => reorderChapters(subjectId, order),
-    onError: () => {
+    onMutate: async (order) => {
+      await queryClient.cancelQueries({ queryKey: ['chapters', subjectId] });
+      const previousChapters = queryClient.getQueryData<IChapter[]>(['chapters', subjectId]);
+      if (previousChapters) {
+        const nextChapters = order
+          .map(({ id }) => previousChapters.find((chapter) => chapter._id === id))
+          .filter((chapter): chapter is IChapter => Boolean(chapter));
+        queryClient.setQueryData(['chapters', subjectId], nextChapters);
+        setLocalChapterOrder(nextChapters);
+      }
+      return { previousChapters };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousChapters) {
+        queryClient.setQueryData(['chapters', subjectId], context.previousChapters);
+      }
       setLocalChapterOrder(null);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
+    },
   });
+
+  useEffect(() => {
+    if (!draggedChapterId && !reorderChapterMutation.isPending) {
+      setLocalChapterOrder(null);
+    }
+  }, [chapters, draggedChapterId, reorderChapterMutation.isPending]);
 
   const createLessonMutation = useMutation({
     mutationFn: createLesson,
