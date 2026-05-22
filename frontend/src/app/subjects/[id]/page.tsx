@@ -451,8 +451,19 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
           <div className="space-y-3">
             {displayChapters.map((chapter) => {
               const isExpanded = !!expandedChapters[chapter._id];
+              const isDraggingChapter = draggedChapterId === chapter._id;
+              const isDragOverChapter = chapterDragOverId === chapter._id;
               return (
-                <div key={chapter._id} className="glass-card rounded-2xl overflow-hidden border border-border/40">
+                <div
+                  key={chapter._id}
+                  ref={isDraggingChapter ? chapterDragNode : null}
+                  draggable
+                  onDragStart={(e) => handleChapterDragStart(e, chapter._id)}
+                  onDragEnter={() => handleChapterDragEnter(chapter._id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnd={handleChapterDragEnd}
+                  className={`glass-card rounded-2xl overflow-hidden border border-border/40 transition ${isDraggingChapter ? 'opacity-40 scale-[0.98]' : ''} ${isDragOverChapter ? 'ring-2 ring-primary/30 border-primary/30' : ''}`}
+                >
                   <div className="flex items-center justify-between p-5 gap-4">
                     {/* Header trigger */}
                     <button
