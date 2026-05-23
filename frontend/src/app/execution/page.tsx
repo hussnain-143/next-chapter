@@ -55,7 +55,11 @@ export default function ExecutionTracker() {
       <div className="glass-card rounded-3xl overflow-hidden border border-border/40">
         <div className="overflow-x-auto w-full">
           {isLoading ? (
-            <div className="p-6 text-center text-xs text-muted-foreground animate-pulse">Loading execution logs...</div>
+            <div className="p-6 space-y-3 animate-pulse">
+              {[...Array(4)].map((_, idx) => (
+                <div key={idx} className="h-10 rounded-2xl bg-accent/20" />
+              ))}
+            </div>
           ) : logs.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground italic">No learning actions logged. Start studying or revising to generate logs!</div>
           ) : (

@@ -121,8 +121,13 @@ export default function KnowledgeGraph() {
 
       <div className="flex-1 glass-card rounded-3xl overflow-hidden border border-border/40 relative shadow-inner">
         {isLoading ? (
-          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground animate-pulse">
-            Constructing knowledge nodes coordinate maps...
+          <div className="w-full h-full p-8 space-y-4 animate-pulse">
+            <div className="h-6 w-3/4 rounded-full bg-accent/20" />
+            <div className="h-40 rounded-3xl bg-accent/20" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-24 rounded-3xl bg-accent/20" />
+              <div className="h-24 rounded-3xl bg-accent/20" />
+            </div>
           </div>
         ) : formattedNodes.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground italic">

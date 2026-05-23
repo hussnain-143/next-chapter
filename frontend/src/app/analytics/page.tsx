@@ -109,7 +109,11 @@ export default function Analytics() {
 
         <div className="overflow-x-auto w-full">
           {loadingSessions ? (
-            <div className="p-6 text-center text-xs text-muted-foreground animate-pulse">Loading study sessions logs...</div>
+            <div className="p-6 space-y-3 animate-pulse">
+              {[...Array(4)].map((_, idx) => (
+                <div key={idx} className="h-10 rounded-2xl bg-accent/20" />
+              ))}
+            </div>
           ) : sessions.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground italic">No study sessions logged. Connect Pomodoro or log a session.</div>
           ) : (

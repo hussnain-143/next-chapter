@@ -1,5 +1,6 @@
 'use client';
 
+import SkeletonLoader from '@/components/ui/SkeletonLoader';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '../store/useAuthStore';
@@ -29,14 +30,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }, [user, token, pathname, router, hydrated]);
 
   if (!hydrated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-          <p className="text-sm font-semibold">Loading user session…</p>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader message="Loading user session…" />;
   }
 
   const isPublicRoute = ['/login', '/register'].includes(pathname);

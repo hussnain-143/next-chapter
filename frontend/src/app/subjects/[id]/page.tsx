@@ -17,6 +17,7 @@ import {
   generateProjects
 } from '@/lib/api';
 import { IChapter, ISubject, ILesson } from '@/types';
+import SkeletonLoader from '@/components/ui/SkeletonLoader';
 import { 
   Plus, 
   Trash2, 
@@ -353,7 +354,13 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
     }, [chapterId, localLessonOrder, lessons, queryClient]);
 
     if (isLoading) {
-      return <div className="pl-12 py-3 text-xs text-muted-foreground animate-pulse">Loading lessons...</div>;
+      return (
+        <div className="pl-12 py-3 space-y-3">
+          {[...Array(3)].map((_, idx) => (
+            <div key={idx} className="h-12 rounded-2xl bg-accent/20 animate-pulse" />
+          ))}
+        </div>
+      );
     }
 
     return (
@@ -407,14 +414,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
   }
 
   if (!subject) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-          <p className="text-sm font-semibold">Loading subject details…</p>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader message="Loading subject details…" />;
   }
 
   return (
