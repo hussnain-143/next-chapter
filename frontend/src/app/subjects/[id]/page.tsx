@@ -152,6 +152,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
 
   useEffect(() => {
     if (!draggedChapterId && !reorderChapterMutation.isPending) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalChapterOrder(null);
     }
   }, [chapters, draggedChapterId, reorderChapterMutation.isPending]);
