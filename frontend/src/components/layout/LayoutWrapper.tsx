@@ -34,9 +34,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           {children}
           {isGlobalLoading && (
             <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40">
-              <div className="flex flex-col items-center gap-3 rounded-3xl bg-slate-950/95 px-6 py-5 shadow-2xl border border-white/10">
-                <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                <p className="text-sm font-semibold text-white">Loading…</p>
+              <div className="w-[min(92%,420px)] animate-pulse rounded-3xl bg-slate-950/95 p-6 shadow-2xl border border-white/10">
+                <div className="h-3 rounded-full bg-white/10" />
+                <div className="mt-3 h-3 rounded-full bg-white/10 w-3/4" />
+                <div className="mt-4 h-12 rounded-2xl bg-white/10" />
+                <div className="mt-4 h-3 rounded-full bg-white/10 w-2/3" />
               </div>
             </div>
           )}
@@ -50,9 +52,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {children}
               {isGlobalLoading && (
                 <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40">
-                  <div className="flex flex-col items-center gap-3 rounded-3xl bg-slate-950/95 px-6 py-5 shadow-2xl border border-white/10">
-                    <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                    <p className="text-sm font-semibold text-white">Loading…</p>
+                  <div className="w-[min(92%,420px)] animate-pulse rounded-3xl bg-slate-950/95 p-6 shadow-2xl border border-white/10">
+                    <div className="h-3 rounded-full bg-white/10" />
+                    <div className="mt-3 h-3 rounded-full bg-white/10 w-3/4" />
+                    <div className="mt-4 h-12 rounded-2xl bg-white/10" />
+                    <div className="mt-4 h-3 rounded-full bg-white/10 w-2/3" />
                   </div>
                 </div>
               )}
