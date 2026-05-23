@@ -1,8 +1,6 @@
-interface SkeletonLoaderProps {
-  message?: string;
-}
 
-export default function SkeletonLoader({ message = 'Loading…' }: SkeletonLoaderProps) {
+
+export default function SkeletonLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground p-6">
       <div className="w-full max-w-5xl space-y-6 animate-pulse">
@@ -28,7 +26,6 @@ export default function SkeletonLoader({ message = 'Loading…' }: SkeletonLoade
           </div>
           <div className="h-12 w-28 rounded-full bg-muted/20" />
         </div>
-        <p className="text-sm font-semibold text-muted-foreground">{message}</p>
       </div>
     </div>
   );
