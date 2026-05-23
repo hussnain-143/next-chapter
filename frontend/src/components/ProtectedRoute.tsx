@@ -30,7 +30,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }, [user, token, pathname, router, hydrated]);
 
   if (!hydrated) {
-    return <SkeletonLoader message="Loading user session…" />;
+    return <SkeletonLoader  />;
   }
 
   const isPublicRoute = ['/login', '/register'].includes(pathname);

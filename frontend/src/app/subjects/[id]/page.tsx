@@ -414,7 +414,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
   }
 
   if (!subject) {
-    return <SkeletonLoader message="Loading subject details…" />;
+    return <SkeletonLoader />;
   }
 
   return (

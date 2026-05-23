@@ -164,7 +164,7 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
   };
 
   if (isLoading || !lesson) {
-    return <SkeletonLoader message="Loading lesson details…" />;
+    return <SkeletonLoader/>;
   }
 
   return (
