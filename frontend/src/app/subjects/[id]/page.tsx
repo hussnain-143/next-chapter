@@ -385,7 +385,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
                 <Link href={`/subjects/${subjectId}/${chapterId}/${lesson._id}`} className="flex items-center gap-3.5 flex-1 min-w-0">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 capitalize ${
                     lesson.status === 'completed' ? 'bg-accent/10 text-accent border border-accent/20' :
-                    lesson.status === 'revision' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                    lesson.status === 'revision' ? 'bg-gold/10 text-gold border border-gold/20' :
                     lesson.status === 'in-progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-muted text-muted-foreground border border-border/80'
                   }`}>
                     {lesson.status}

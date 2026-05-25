@@ -33,7 +33,7 @@ export default function Analytics() {
   const getSessionTypeColor = (type: string) => {
     switch (type) {
       case 'study': return 'bg-primary/10 text-primary border-primary/20';
-      case 'review': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+      case 'review': return 'bg-gold/10 text-gold border-gold/20';
       case 'quiz': return 'bg-primary/10 text-primary border-primary/20';
       case 'practice': return 'bg-accent/10 text-accent border-accent/20';
       default: return 'bg-muted text-muted-foreground';
@@ -71,7 +71,7 @@ export default function Analytics() {
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sessions Finished</span>
               <h3 className="text-lg font-bold text-foreground">{report.sessionsCompleted}</h3>
             </div>
-            <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+            <div className="p-3 bg-gold/10 text-gold rounded-xl border border-gold/20">
               <TrendingUp className="w-4.5 h-4.5" />
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function Analytics() {
                   <tr key={s._id} className="hover:bg-accent/10 transition">
                     <td className="p-4 pl-6 font-semibold">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.subjectId?.color || '#6366f1' }}></span>
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.subjectId?.color || 'var(--primary)' }}></span>
                         <span className="truncate max-w-[120px]">{s.subjectId?.name || 'General Space'}</span>
                       </div>
                     </td>

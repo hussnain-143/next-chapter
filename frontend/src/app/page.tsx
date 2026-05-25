@@ -65,7 +65,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            Welcome back, Scholar <Sparkles className="w-5 h-5 text-[#F59E0B] animate-bounce" />
+            Welcome back, Scholar <Sparkles className="w-5 h-5 text-gold animate-bounce" />
           </h2>
           <p className="text-sm text-muted-foreground">Here is a summary of your active learning workspace.</p>
         </div>
@@ -88,28 +88,28 @@ export default function Dashboard() {
           value={stats.totalSubjects}
           description="In learning queue"
           icon={BookOpen}
-          variant="violet"
+          variant="primary"
         />
         <StatsCard
           title="Study Duration"
           value={formatHours(stats.totalTimeSpent)}
           description="Total hours logged"
           icon={Hourglass}
-          variant="amber"
+          variant="gold"
         />
         <StatsCard
           title="Completion Rate"
           value={`${stats.completionRate}%`}
           description={`${stats.completedLessons}/${stats.totalLessons} lessons`}
           icon={CheckCircle}
-          variant="emerald"
+          variant="success"
         />
         <StatsCard
           title="Productivity Score"
           value={stats.productivityScore}
           description="Daily consistency rating"
           icon={TrendingUp}
-          variant="rose"
+          variant="accent"
         />
       </div>
 

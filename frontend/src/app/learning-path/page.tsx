@@ -32,7 +32,7 @@ export default function LearningPath() {
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
       case 'beginner': return 'bg-accent/10 text-accent border-accent/20';
-      case 'intermediate': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+      case 'intermediate': return 'bg-gold/10 text-gold border-gold/20';
       case 'advanced': return 'bg-red-500/10 text-red-500 border-red-500/20';
       default: return 'bg-muted text-muted-foreground';
     }

@@ -48,7 +48,9 @@ export default function RootLayout({
               fontSize: '13px',
               fontWeight: '500',
               padding: '14px 16px',
-              border: '1px solid',
+              background: 'var(--card)',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border)',
             },
             classNames: {
               toast: 'shadow-2xl',

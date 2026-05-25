@@ -22,9 +22,8 @@ import {
 } from '../../components/graph/KnowledgeGraphNode';
 
 const EDGE_COLORS = {
-  subjectChapter: '#A78BFA',
-  chapterLesson: '#38BDF8',
-  manual: '#94A3B8',
+  subjectChapter: 'var(--graph-edge-subject)',
+  chapterLesson: 'var(--graph-edge-lesson)',
 } as const;
 
 export default function KnowledgeGraph() {
@@ -102,17 +101,14 @@ export default function KnowledgeGraph() {
         title="Knowledge Map"
         description="Each subject is its own tree: subject on top, chapters in a row below, lessons under each chapter."
         icon={GitFork}
-        hint="Scroll to zoom · Drag the canvas to pan · Colours: violet = subject, cream = chapter, slate = lesson."
+        hint="Scroll to zoom · Drag the canvas to pan · Purple = subject, cream = chapter, slate blue = lesson."
       />
 
       {!isLoading && formattedNodes.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <LegendItem
-            swatchClass="bg-gradient-to-br from-violet-600 to-indigo-700"
-            label={`${counts.subjects} Subjects`}
-          />
-          <LegendItem swatchClass="bg-[#FFFBEB] border-2 border-amber-500/60" label={`${counts.chapters} Chapters`} />
-          <LegendItem swatchClass="bg-[#1E293B] border-2 border-sky-500/50" label={`${counts.lessons} Lessons`} />
+          <LegendItem swatchClass="graph-node-subject w-3.5 h-3.5 rounded-full border-0" label={`${counts.subjects} Subjects`} />
+          <LegendItem swatchClass="graph-node-chapter w-3.5 h-3.5 rounded-full border-2" label={`${counts.chapters} Chapters`} />
+          <LegendItem swatchClass="graph-node-lesson w-3.5 h-3.5 rounded-full border-2" label={`${counts.lessons} Lessons`} />
         </div>
       )}
 
@@ -152,9 +148,9 @@ export default function KnowledgeGraph() {
             <MiniMap
               nodeColor={(node) => {
                 const t = (node.data as KnowledgeGraphNodeData)?.nodeType;
-                if (t === 'subject') return '#7C3AED';
-                if (t === 'chapter') return '#F59E0B';
-                return '#334155';
+                if (t === 'subject') return '#6D4AFF';
+                if (t === 'chapter') return '#F0C14A';
+                return '#1A2332';
               }}
               maskColor="rgba(28, 26, 46, 0.8)"
               className="!bg-card !border-border !rounded-xl !shadow-lg hidden md:block"

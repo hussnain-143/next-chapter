@@ -27,7 +27,7 @@ export default function ExecutionTracker() {
       case 'completed':
         return { icon: CheckCircle2, color: 'text-primary border-primary/20 bg-primary/10', label: 'Completed Lesson' };
       case 'revised':
-        return { icon: RefreshCw, color: 'text-amber-500 border-amber-500/20 bg-amber-500/10', label: 'Revised Lesson' };
+        return { icon: RefreshCw, color: 'text-gold border-gold/20 bg-gold/10', label: 'Revised Lesson' };
       case 'bookmarked':
         return { icon: Bookmark, color: 'text-blue-500 border-blue-500/20 bg-blue-500/10', label: 'Bookmarked' };
       case 'quiz_taken':

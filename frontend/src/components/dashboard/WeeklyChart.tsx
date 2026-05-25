@@ -54,8 +54,8 @@ export default function WeeklyChart({ data = [] }: WeeklyChartProps) {
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorMins" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#a05aff" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#a05aff" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="var(--chart-stroke)" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="var(--chart-stroke)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
@@ -70,7 +70,7 @@ export default function WeeklyChart({ data = [] }: WeeklyChartProps) {
                   boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                 }}
               />
-              <Area type="monotone" dataKey="minutes" name="Minutes" stroke="#a05aff" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
+              <Area type="monotone" dataKey="minutes" name="Minutes" stroke="var(--chart-stroke)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
             </AreaChart>
           </ResponsiveContainer>
         )}

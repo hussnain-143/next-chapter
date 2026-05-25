@@ -198,7 +198,7 @@ export default function AICoach() {
         <div className="glass-card rounded-3xl p-5 space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-foreground uppercase tracking-widest block flex items-center gap-1">
-              <AlertTriangle className="w-4 h-4 text-amber-500 animate-pulse" />
+              <AlertTriangle className="w-4 h-4 text-gold animate-pulse" />
               <span>Weak Topic Detector</span>
             </span>
             <button onClick={() => refetchWeak()} className="text-muted-foreground hover:text-foreground">
@@ -211,13 +211,13 @@ export default function AICoach() {
               <p className="text-xs text-muted-foreground italic text-center py-6">No weak areas identified. Good job!</p>
             ) : (
               weakTopicsArray.slice(0, 3).map((w, idx) => (
-                <div key={idx} className="p-3 border border-amber-500/20 bg-amber-500/5 rounded-xl space-y-1">
+                <div key={idx} className="p-3 border border-gold/20 bg-gold/5 rounded-xl space-y-1">
                   <h4 className="text-xs font-bold text-foreground truncate">{w.lessonTitle}</h4>
                   <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">{w.reason}</p>
                   
                   <button
                     onClick={() => handleSuggestionClick(`Help me review: ${w.lessonTitle}. Give me a summary and custom quiz questions.`)}
-                    className="text-[9px] text-amber-600 dark:text-amber-400 hover:underline font-bold mt-2 block"
+                    className="text-[9px] text-text-gold hover:underline font-bold mt-2 block"
                   >
                     Generate Study Sheet
                   </button>

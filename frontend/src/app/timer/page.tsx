@@ -119,7 +119,7 @@ export default function PomodoroPage() {
           <h1 className="text-5xl font-black tracking-tight text-foreground font-mono tabular-nums">
             {formatTime(timeLeft)}
           </h1>
-          <div className="flex items-center justify-center gap-1 text-[10px] text-amber-500 font-bold font-mono">
+          <div className="flex items-center justify-center gap-1 text-[10px] text-gold font-bold font-mono">
             <Flame className="w-3.5 h-3.5 fill-current" />
             <span>Finished: {pomodoroCount}</span>
           </div>

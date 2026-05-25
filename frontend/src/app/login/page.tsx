@@ -58,7 +58,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+    <div className="min-h-screen flex items-center justify-center bg-auth p-4 relative">
       <div className="glass-card w-full max-w-[420px] p-10 rounded-[2rem] z-10 border border-border/50 shadow-sm relative overflow-hidden fade-in">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-80" />
 

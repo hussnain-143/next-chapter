@@ -24,7 +24,7 @@ export default function ActivityTimeline({ logs = [] }: ActivityTimelineProps) {
       case 'completed':
         return { icon: CheckCircle2, bg: 'bg-primary/10 text-primary border-primary/20', label: 'Completed lesson' };
       case 'revised':
-        return { icon: RefreshCw, bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20', label: 'Revised lesson' };
+        return { icon: RefreshCw, bg: 'bg-gold/10 text-gold border-gold/20', label: 'Revised lesson' };
       case 'bookmarked':
         return { icon: Bookmark, bg: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Bookmarked' };
       case 'quiz_taken':

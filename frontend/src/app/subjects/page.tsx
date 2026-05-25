@@ -14,9 +14,9 @@ import { toast } from 'sonner';
 import { PageIntro } from '../../components/ui/PageIntro';
 
 const CUSTOM_COLORS = [
-  '#6366f1', '#3b82f6', '#0ea5e9', '#10b981',
-  '#84cc16', '#eab308', '#f59e0b', '#f97316',
-  '#ef4444', '#ec4899', '#d946ef', '#8b5cf6',
+  '#9B7FFF', '#5B9CF5', '#38BDF8', '#4ADE9A',
+  '#67B7F7', '#F0C14A', '#F5B942', '#F07178',
+  '#E879F9', '#A78BFA', '#818CF8', '#6D4AFF',
 ];
 
 export default function Subjects() {
@@ -25,7 +25,7 @@ export default function Subjects() {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#6366f1');
+  const [color, setColor] = useState('#9B7FFF');
 
   // Drag state
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function Subjects() {
     },
   });
 
-  const resetForm = () => { setStep(1); setName(''); setDescription(''); setColor('#6366f1'); };
+  const resetForm = () => { setStep(1); setName(''); setDescription(''); setColor('#9B7FFF'); };
   const handleOpenModal = () => { resetForm(); setIsOpen(true); };
   const handleNextStep = (e: React.FormEvent) => { e.preventDefault(); if (!name.trim()) return; setStep(2); };
 

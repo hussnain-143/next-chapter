@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'AI-Powered Study Tracker & Learning Planner',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0B0A1A',
-    theme_color: '#7C3AED',
+    background_color: '#12101C',
+    theme_color: '#9B7FFF',
     icons: [
       {
         src: '/logo.png',
