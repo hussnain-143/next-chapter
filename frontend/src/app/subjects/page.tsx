@@ -6,10 +6,12 @@ import { getSubjects, createSubject, deleteSubject, reorderSubjects } from '../.
 import { ISubject } from '../../types';
 import {
   Plus, X, Trash2, BookOpen, Palette, CheckCircle2,
-  ArrowRight, Check, GripVertical, Layers,
+  ArrowRight, Check, GripVertical, Layers, Loader2,
+  FileText, BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { PageIntro } from '../../components/ui/PageIntro';
 
 const CUSTOM_COLORS = [
   '#6366f1', '#3b82f6', '#0ea5e9', '#10b981',
@@ -67,10 +69,13 @@ export default function Subjects() {
 
   const reorderMutation = useMutation({
     mutationFn: reorderSubjects,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast.success('Order saved', { description: 'Your subject list has been updated.' });
+    },
     onError: () => {
-      // Revert on failure
       setLocalOrder(null);
-      toast.error('Failed to save order', { description: 'Drag order was not saved.' });
+      toast.error('Failed to save order', { description: 'Drag order was not saved. Try again.' });
     },
   });
 
@@ -95,9 +100,9 @@ export default function Subjects() {
   const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
     setDraggedId(id);
     e.dataTransfer.effectAllowed = 'move';
-    // Slight delay so the ghost image renders before we dim the card
+    e.stopPropagation();
     setTimeout(() => {
-      if (dragNode.current) dragNode.current.style.opacity = '0.4';
+      if (dragNode.current) dragNode.current.style.opacity = '0.55';
     }, 0);
   }, []);
 
@@ -127,25 +132,51 @@ export default function Subjects() {
     reorderMutation.mutate(payload);
   }, [localOrder, subjects, reorderMutation]);
 
+  const totalLessons = displaySubjects.reduce((n, s) => n + s.totalLessons, 0);
+  const completedLessons = displaySubjects.reduce((n, s) => n + s.completedLessons, 0);
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 animate-fade-in-up">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Subjects Library</h2>
-          <p className="text-sm text-muted-foreground mt-1 font-medium flex items-center gap-1.5">
-            <GripVertical className="w-3.5 h-3.5 opacity-50" />
-            Drag cards to reorder · click to open
-          </p>
+      <PageIntro
+        title="Subjects Library"
+        description="Organize what you are learning. Each card is a subject with chapters and lessons inside."
+        icon={GripVertical}
+        hint="Use the grip handle on each card to reorder. Click the card body to open a subject."
+        action={
+          <button
+            onClick={handleOpenModal}
+            className="flex items-center gap-2 px-5 py-3 text-sm font-bold rounded-xl btn-gradient shadow-sm hover:opacity-90 transition-opacity active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" aria-hidden />
+            New Subject
+          </button>
+        }
+      />
+
+      {displaySubjects.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/50 px-4 py-2.5 text-sm">
+            <Layers className="w-4 h-4 text-primary shrink-0" aria-hidden />
+            <span className="font-semibold text-foreground">{displaySubjects.length}</span>
+            <span className="text-muted-foreground">subjects</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/50 px-4 py-2.5 text-sm">
+            <FileText className="w-4 h-4 text-accent shrink-0" aria-hidden />
+            <span className="font-semibold text-foreground">{completedLessons}/{totalLessons}</span>
+            <span className="text-muted-foreground">lessons done</span>
+          </div>
+          {reorderMutation.isPending && (
+            <div
+              className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden />
+              <span className="font-medium">Saving order…</span>
+            </div>
+          )}
         </div>
-        <button
-          onClick={handleOpenModal}
-          className="flex items-center gap-2 px-5 py-3 text-sm font-bold rounded-xl btn-gradient shadow-sm hover:opacity-90 transition-opacity active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" />
-          New Subject
-        </button>
-      </div>
+      )}
 
       {/* Grid */}
       {isLoading ? (
@@ -168,70 +199,108 @@ export default function Subjects() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displaySubjects.map((sub) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {displaySubjects.map((sub, index) => {
             const isDragging = draggedId === sub._id;
             const isOver = dragOverId === sub._id;
             return (
-              <div
+              <article
                 key={sub._id}
                 ref={isDragging ? dragNode : null}
-                draggable
-                onDragStart={(e) => handleDragStart(e, sub._id)}
                 onDragEnter={() => handleDragEnter(sub._id)}
                 onDragOver={(e) => e.preventDefault()}
-                onDragEnd={handleDragEnd}
                 className={[
-                  'glass-card rounded-[1.5rem] p-6 flex flex-col justify-between h-48 relative group border transition-all duration-200 cursor-grab active:cursor-grabbing select-none',
-                  isDragging ? 'opacity-40 scale-[0.97]' : 'hover:shadow-md hover:border-primary/30',
-                  isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-[1.01]' : 'border-border/60',
+                  'glass-card rounded-2xl p-5 flex flex-col min-h-[200px] relative group border transition-all duration-200',
+                  isDragging ? 'opacity-55 scale-[0.98] shadow-lg' : 'hover:shadow-md hover:border-primary/25',
+                  isOver ? 'ring-2 ring-primary/50 border-primary/40' : 'border-border/60',
                 ].join(' ')}
               >
-                {/* Drag handle */}
-                <div className="absolute top-3 left-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
-                  <GripVertical className="w-4 h-4" />
-                </div>
-
-                <div className="flex justify-between items-start gap-4">
-                  <Link
-                    href={`/subjects/${sub._id}`}
-                    className="flex items-start gap-4 max-w-[85%] group/link"
-                    onClick={(e) => isDragging && e.preventDefault()}
+                <div className="flex items-start gap-2 mb-4">
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, sub._id)}
+                    onDragEnd={handleDragEnd}
+                    className={[
+                      'p-2 rounded-lg border border-border/50 bg-muted/40 text-muted-foreground',
+                      'hover:text-foreground hover:border-primary/40 hover:bg-primary/10',
+                      'cursor-grab active:cursor-grabbing touch-none shrink-0',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                    ].join(' ')}
+                    aria-label={`Drag to reorder ${sub.name}`}
+                    title="Drag to reorder"
                   >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold shadow-inner border shrink-0 transition-transform group-hover/link:scale-105 ml-4"
-                      style={{ backgroundColor: `${sub.color}15`, color: sub.color, borderColor: `${sub.color}30` }}
-                    >
-                      {sub.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 pt-0.5">
-                      <h4 className="text-base font-bold text-foreground truncate group-hover/link:text-primary transition-colors">{sub.name}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1 font-medium">{sub.description || 'No description added.'}</p>
-                    </div>
-                  </Link>
+                    <GripVertical className="w-5 h-5" aria-hidden />
+                  </button>
+
+                  <span
+                    className="text-xs font-bold text-muted-foreground tabular-nums px-2 py-1 rounded-md bg-muted/50 border border-border/40"
+                    aria-label={`Position ${index + 1}`}
+                  >
+                    #{index + 1}
+                  </span>
+
+                  <div className="flex-1" />
 
                   <button
+                    type="button"
                     onClick={() => deleteMutation.mutate(sub._id)}
-                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition opacity-0 group-hover:opacity-100 shrink-0"
-                    title="Delete subject"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition opacity-70 sm:opacity-0 sm:group-hover:opacity-100 shrink-0 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+                    aria-label={`Delete ${sub.name}`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" aria-hidden />
                   </button>
                 </div>
 
-                <div className="space-y-2.5 mt-4">
-                  <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <span>{sub.completedLessons}/{sub.totalLessons} Lessons</span>
-                    <span>{sub.progressPercent}%</span>
+                <Link
+                  href={`/subjects/${sub._id}`}
+                  className="flex items-start gap-4 flex-1 group/link rounded-xl -m-1 p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={(e) => isDragging && e.preventDefault()}
+                >
+                  <div
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-bold border-2 shrink-0 transition-transform group-hover/link:scale-[1.02]"
+                    style={{ backgroundColor: `${sub.color}18`, color: sub.color, borderColor: `${sub.color}40` }}
+                    aria-hidden
+                  >
+                    {sub.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-black/5 dark:border-white/5">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-bold text-foreground leading-tight group-hover/link:text-primary transition-colors">
+                      {sub.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1.5 leading-relaxed">
+                      {sub.description || 'No description yet.'}
+                    </p>
+                  </div>
+                </Link>
+
+                <div className="mt-5 pt-4 border-t border-border/40 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                      <BarChart3 className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                      {sub.completedChapters}/{sub.totalChapters} chapters
+                    </span>
+                    <span className="font-bold text-foreground tabular-nums">{sub.progressPercent}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground font-medium mb-1">
+                    <span>{sub.completedLessons}/{sub.totalLessons} lessons</span>
+                    <span className="text-xs uppercase tracking-wide">Progress</span>
+                  </div>
+                  <div
+                    className="w-full h-2.5 bg-muted rounded-full overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={sub.progressPercent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${sub.name} progress`}
+                  >
                     <div
                       className="h-full rounded-full transition-all duration-500 ease-out"
                       style={{ backgroundColor: sub.color, width: `${sub.progressPercent}%` }}
                     />
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
@@ -267,7 +336,7 @@ export default function Subjects() {
             {step === 1 ? (
               <form onSubmit={handleNextStep} className="space-y-5">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Subject Name</label>
+                  <label className="text-sm font-semibold text-foreground block">Subject name</label>
                   <input
                     type="text" required autoFocus
                     placeholder="e.g. Data Structures, React Patterns"
@@ -276,7 +345,7 @@ export default function Subjects() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Description (Optional)</label>
+                  <label className="text-sm font-semibold text-foreground block">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
                   <textarea
                     placeholder="Briefly describe what you'll learn…"
                     value={description} onChange={(e) => setDescription(e.target.value)}
@@ -291,7 +360,7 @@ export default function Subjects() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Preview */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Preview</label>
+                  <label className="text-sm font-semibold text-foreground block">Preview</label>
                   <div className="p-4 rounded-2xl border border-border/60 bg-accent/5 flex flex-col justify-between h-32 relative overflow-hidden">
                     <div className="flex items-start gap-4">
                       <div
@@ -313,7 +382,7 @@ export default function Subjects() {
 
                 {/* Color picker */}
                 <div className="space-y-3 pt-2">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block ml-1">Theme Color</label>
+                  <label className="text-sm font-semibold text-foreground block">Theme color</label>
                   <div className="flex flex-wrap gap-3">
                     {CUSTOM_COLORS.map((c) => (
                       <button

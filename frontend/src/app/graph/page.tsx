@@ -1,10 +1,24 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getKnowledgeGraph } from '../../lib/api';
-import { ReactFlow, Controls, Background, MiniMap } from '@xyflow/react';
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  MiniMap,
+  Panel,
+  MarkerType,
+  type Edge,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { GitFork, Sparkles } from 'lucide-react';
+import { GitFork, ZoomIn, Loader2 } from 'lucide-react';
+import { PageIntro } from '../../components/ui/PageIntro';
+import {
+  knowledgeGraphNodeTypes,
+  type KnowledgeGraphNodeData,
+} from '../../components/graph/KnowledgeGraphNode';
 
 export default function KnowledgeGraph() {
   const { data, isLoading } = useQuery({
@@ -12,50 +26,10 @@ export default function KnowledgeGraph() {
     queryFn: getKnowledgeGraph,
   });
 
-  const getStyleForType = (type: string) => {
-    switch (type) {
-      case 'subject':
-        return {
-          background: 'var(--primary)',
-          border: '2px solid rgba(255,255,255,0.2)',
-          color: '#ffffff',
-          borderRadius: '16px',
-          padding: '12px 18px',
-          fontWeight: 'bold',
-          fontSize: '13px',
-          boxShadow: '0 4px 20px rgba(124, 58, 237, 0.4)',
-        };
-      case 'chapter':
-        return {
-          background: 'var(--gold)',
-          border: '2px solid rgba(255,255,255,0.2)',
-          color: '#1E1B4B', /* deep navy for contrast on gold */
-          borderRadius: '12px',
-          padding: '10px 14px',
-          fontWeight: '700',
-          fontSize: '12px',
-          boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
-        };
-      case 'lesson':
-        return {
-          background: 'var(--card)',
-          border: '2px solid var(--accent)',
-          color: 'var(--foreground)',
-          borderRadius: '10px',
-          padding: '8px 12px',
-          fontSize: '11px',
-          fontWeight: '600',
-          boxShadow: '0 2px 10px rgba(59, 130, 246, 0.15)',
-        };
-      default:
-        return {};
+  const { nodes: formattedNodes, edges: formattedEdges, counts } = useMemo(() => {
+    if (!data?.nodes?.length) {
+      return { nodes: [], edges: [] as Edge[], counts: { subjects: 0, chapters: 0, lessons: 0 } };
     }
-  };
-
-  // Auto-layout when positions are unset (0,0). Graph node ids are KnowledgeNode ids;
-  // parent links use data.subjectId / data.chapterId (Subject/Chapter document ids).
-  const buildNodes = () => {
-    if (!data?.nodes?.length) return [];
 
     const radius = 200;
     const centerX = 400;
@@ -89,7 +63,7 @@ export default function KnowledgeGraph() {
       (n) => (n.position?.x ?? 0) === 0 && (n.position?.y ?? 0) === 0
     );
 
-    return data.nodes.map((node) => {
+    const nodes = data.nodes.map((node) => {
       let x = node.position?.x ?? 0;
       let y = node.position?.y ?? 0;
 
@@ -136,69 +110,117 @@ export default function KnowledgeGraph() {
         }
       }
 
+      const nodeType = (node.type ?? 'lesson') as KnowledgeGraphNodeData['nodeType'];
+
       return {
         id: node.id,
-        data: { label: node.data?.label ?? '' },
+        type: 'knowledge',
         position: { x, y },
-        style: getStyleForType(node.type),
+        data: {
+          label: node.data?.label ?? 'Untitled',
+          nodeType,
+          masteryScore: node.data?.masteryScore ?? 0,
+        } satisfies KnowledgeGraphNodeData,
       };
     });
-  };
 
-  const formattedNodes = buildNodes();
-  const formattedEdges = data?.edges || [];
+    const edges: Edge[] = (data.edges ?? []).map((edge) => ({
+      ...edge,
+      type: 'smoothstep',
+      animated: edge.animated ?? true,
+      style: { stroke: '#6366F1', strokeWidth: 2, opacity: 0.65 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#6366F1', width: 16, height: 16 },
+    }));
+
+    return {
+      nodes,
+      edges,
+      counts: {
+        subjects: data.nodes.filter((n) => n.type === 'subject').length,
+        chapters: data.nodes.filter((n) => n.type === 'chapter').length,
+        lessons: data.nodes.filter((n) => n.type === 'lesson').length,
+      },
+    };
+  }, [data]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto h-[calc(100vh-120px)] flex flex-col overflow-hidden">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            Knowledge Map Graph <GitFork className="w-5 h-5 text-primary rotate-180" />
-          </h2>
-          <p className="text-sm text-muted-foreground">Interactive layout connecting Subjects, Chapters, and Lesson mastery nodes.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-primary/10 dark:bg-primary/15 border border-primary/20 px-3 py-1.5 rounded-full text-primary dark:text-primary font-semibold text-xs shadow-sm">
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-          <span>Interactive Connective Network</span>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto h-[calc(100vh-100px)] pb-6">
+      <PageIntro
+        title="Knowledge Map"
+        description="See how your subjects, chapters, and lessons connect. Purple nodes are subjects, gold are chapters, and blue-bordered cards are lessons."
+        icon={GitFork}
+        hint="Scroll to zoom · Drag the background to pan · Use +/− controls at the bottom left."
+      />
 
-      <div className="flex-1 glass-card rounded-3xl overflow-hidden border border-border/40 relative shadow-inner">
+      {!isLoading && formattedNodes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <LegendItem color="bg-primary" label={`${counts.subjects} Subjects`} />
+          <LegendItem color="bg-[#FBBF24]" label={`${counts.chapters} Chapters`} />
+          <LegendItem color="bg-card border-2 border-accent" label={`${counts.lessons} Lessons`} />
+        </div>
+      )}
+
+      <div className="flex-1 min-h-[420px] glass-card rounded-2xl overflow-hidden border border-border/50 relative shadow-lg">
         {isLoading ? (
-          <div className="w-full h-full p-8 space-y-4 animate-pulse">
-            <div className="h-6 w-3/4 rounded-full bg-accent/20" />
-            <div className="h-40 rounded-3xl bg-accent/20" />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="h-24 rounded-3xl bg-accent/20" />
-              <div className="h-24 rounded-3xl bg-accent/20" />
-            </div>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
+            <p className="text-sm font-medium">Loading your knowledge map…</p>
           </div>
         ) : formattedNodes.length === 0 ? (
-          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground italic">
-            No subjects or lessons added yet. Create some to draw your knowledge graph!
+          <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-8 text-center max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <GitFork className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground">No map data yet</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Add subjects, chapters, and lessons from the Subjects page. They will appear here automatically.
+            </p>
           </div>
         ) : (
           <ReactFlow
-            nodes={formattedNodes as any}
+            nodes={formattedNodes}
             edges={formattedEdges}
+            nodeTypes={knowledgeGraphNodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-            minZoom={0.2}
-            className="bg-accent/5 dark:bg-transparent"
+            fitViewOptions={{ padding: 0.25, maxZoom: 0.95 }}
+            minZoom={0.15}
+            maxZoom={1.5}
+            proOptions={{ hideAttribution: true }}
+            className="knowledge-graph-flow"
           >
-            <Controls className="!bg-card !border-border/60 !rounded-xl !shadow-lg" />
-            <MiniMap 
-              nodeColor={(node) => {
-                if (node.style?.background === 'var(--primary)') return '#7C3AED';
-                if (node.style?.background === 'var(--gold)') return '#F59E0B';
-                return '#3B82F6'; // lesson border color
-              }}
-              className="!bg-card !border-border/60 !rounded-xl !shadow-lg hidden md:block" 
+            <Controls
+              showInteractive={false}
+              className="!bg-card !border-border !rounded-xl !shadow-lg [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted"
             />
-            <Background color="rgba(100, 116, 139, 0.1)" gap={16} size={1} />
+            <MiniMap
+              nodeColor={(node) => {
+                const t = (node.data as KnowledgeGraphNodeData)?.nodeType;
+                if (t === 'subject') return '#8B5CF6';
+                if (t === 'chapter') return '#FBBF24';
+                return '#6366F1';
+              }}
+              maskColor="rgba(28, 26, 46, 0.75)"
+              className="!bg-card !border-border !rounded-xl !shadow-lg hidden md:block"
+            />
+            <Background color="rgba(155, 142, 196, 0.12)" gap={20} size={1} />
+            <Panel position="bottom-right" className="hidden sm:block m-3">
+              <div className="flex items-center gap-2 rounded-lg bg-card/95 border border-border px-3 py-2 text-xs text-muted-foreground shadow-md backdrop-blur-sm">
+                <ZoomIn className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>Pinch or scroll to zoom</span>
+              </div>
+            </Panel>
           </ReactFlow>
         )}
       </div>
     </div>
+  );
+}
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 font-medium text-foreground">
+      <span className={`w-3 h-3 rounded-full shrink-0 ${color}`} aria-hidden />
+      {label}
+    </span>
   );
 }

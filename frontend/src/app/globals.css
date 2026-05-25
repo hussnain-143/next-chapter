@@ -64,6 +64,14 @@
   --glow-accent:  rgba(99, 102, 241, 0.22);
 }
 
+/* ── React Flow — knowledge graph readability ─────────────────────────────── */
+.knowledge-graph-flow .react-flow__edge-path {
+  stroke-linecap: round;
+}
+.knowledge-graph-flow .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
 /* ── Tailwind v4 theme mapping ─────────────────────────────────────────────── */
 @theme inline {
   --color-background:           var(--background);
