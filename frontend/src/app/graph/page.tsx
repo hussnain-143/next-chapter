@@ -52,49 +52,93 @@ export default function KnowledgeGraph() {
     }
   };
 
-  // Convert raw node layouts if coordinate points are missing or all 0
+  // Auto-layout when positions are unset (0,0). Graph node ids are KnowledgeNode ids;
+  // parent links use data.subjectId / data.chapterId (Subject/Chapter document ids).
   const buildNodes = () => {
-    if (!data || !data.nodes) return [];
-    
-    // Auto spacing nodes dynamically using simple grid circle formula if positions are zero
-    const radius = 180;
-    const subjects = data.nodes.filter(n => n.type === 'subject');
-    
-    return data.nodes.map((node, idx) => {
-      let x = node.position?.x || 0;
-      let y = node.position?.y || 0;
-      
-      // If position not set, let's arrange subjects in a ring, chapters underneath
-      if (x === 0 && y === 0) {
+    if (!data?.nodes?.length) return [];
+
+    const radius = 200;
+    const centerX = 400;
+    const centerY = 280;
+    const subjectNodes = data.nodes.filter((n) => n.type === 'subject');
+
+    const subjectIndexByDocId = new Map<string, number>();
+    subjectNodes.forEach((n, i) => {
+      if (n.data?.subjectId) subjectIndexByDocId.set(String(n.data.subjectId), i);
+    });
+
+    const chaptersBySubject = new Map<string, typeof data.nodes>();
+    data.nodes
+      .filter((n) => n.type === 'chapter' && n.data?.subjectId)
+      .forEach((n) => {
+        const key = String(n.data.subjectId);
+        if (!chaptersBySubject.has(key)) chaptersBySubject.set(key, []);
+        chaptersBySubject.get(key)!.push(n);
+      });
+
+    const lessonsByChapter = new Map<string, typeof data.nodes>();
+    data.nodes
+      .filter((n) => n.type === 'lesson' && n.data?.chapterId)
+      .forEach((n) => {
+        const key = String(n.data.chapterId);
+        if (!lessonsByChapter.has(key)) lessonsByChapter.set(key, []);
+        lessonsByChapter.get(key)!.push(n);
+      });
+
+    const needsAutoLayout = data.nodes.every(
+      (n) => (n.position?.x ?? 0) === 0 && (n.position?.y ?? 0) === 0
+    );
+
+    return data.nodes.map((node) => {
+      let x = node.position?.x ?? 0;
+      let y = node.position?.y ?? 0;
+
+      if (needsAutoLayout || (x === 0 && y === 0)) {
         if (node.type === 'subject') {
-          const subIdx = subjects.indexOf(node);
-          const angle = (subIdx / Math.max(1, subjects.length)) * Math.PI * 2;
-          x = 250 + Math.cos(angle) * radius * 1.5;
-          y = 200 + Math.sin(angle) * radius * 1.5;
+          const subIdx = subjectNodes.indexOf(node);
+          const angle = (subIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
+          x = centerX + Math.cos(angle) * radius;
+          y = centerY + Math.sin(angle) * radius;
         } else if (node.type === 'chapter' && node.data?.subjectId) {
-          const pSub = subjects.find(s => s.id === node.data.subjectId);
-          const pSubIdx = pSub ? subjects.indexOf(pSub) : 0;
-          const angle = (pSubIdx / Math.max(1, subjects.length)) * Math.PI * 2;
-          // Offset chapter under parent subject
-          const chIdx = data.nodes.filter(n => n.type === 'chapter' && n.data?.subjectId === node.data.subjectId).indexOf(node);
-          x = 250 + Math.cos(angle) * radius * 1.5 + (chIdx - 1) * 130;
-          y = 200 + Math.sin(angle) * radius * 1.5 + 130;
+          const subjectKey = String(node.data.subjectId);
+          const siblings = chaptersBySubject.get(subjectKey) ?? [];
+          const chIdx = siblings.indexOf(node);
+          const pSubIdx = subjectIndexByDocId.get(subjectKey) ?? 0;
+          const angle = (pSubIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
+          const spread = (chIdx - (siblings.length - 1) / 2) * 150;
+          x = centerX + Math.cos(angle) * (radius + 120) + spread * Math.sin(angle);
+          y = centerY + Math.sin(angle) * (radius + 120) - spread * Math.cos(angle) + 80;
         } else if (node.type === 'lesson' && node.data?.chapterId) {
-          const chNode = data.nodes.find(n => n.type === 'chapter' && n.id === node.data.chapterId);
-          const chIdx = chNode ? data.nodes.filter(n => n.type === 'chapter' && n.data?.subjectId === chNode.data?.subjectId).indexOf(chNode) : 0;
-          const pSub = chNode ? subjects.find(s => s.id === chNode.data?.subjectId) : null;
-          const pSubIdx = pSub ? subjects.indexOf(pSub) : 0;
-          const angle = (pSubIdx / Math.max(1, subjects.length)) * Math.PI * 2;
-          
-          const lesIdx = data.nodes.filter(n => n.type === 'lesson' && n.data?.chapterId === node.data.chapterId).indexOf(node);
-          x = 250 + Math.cos(angle) * radius * 1.5 + (chIdx - 1) * 130 + (lesIdx - 1) * 80;
-          y = 200 + Math.sin(angle) * radius * 1.5 + 230;
+          const chapterKey = String(node.data.chapterId);
+          const chNode = data.nodes.find(
+            (n) => n.type === 'chapter' && String(n.data?.chapterId) === chapterKey
+          );
+          const siblings = lessonsByChapter.get(chapterKey) ?? [];
+          const lesIdx = siblings.indexOf(node);
+          const subjectKey = chNode?.data?.subjectId ? String(chNode.data.subjectId) : '';
+          const chapterSiblings = subjectKey ? (chaptersBySubject.get(subjectKey) ?? []) : [];
+          const chIdx = chNode ? chapterSiblings.indexOf(chNode) : 0;
+          const pSubIdx = subjectKey ? (subjectIndexByDocId.get(subjectKey) ?? 0) : 0;
+          const angle = (pSubIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
+          const chSpread = (chIdx - (chapterSiblings.length - 1) / 2) * 150;
+          const lesSpread = (lesIdx - (siblings.length - 1) / 2) * 100;
+          x =
+            centerX +
+            Math.cos(angle) * (radius + 220) +
+            chSpread * Math.sin(angle) +
+            lesSpread * Math.sin(angle + Math.PI / 2);
+          y =
+            centerY +
+            Math.sin(angle) * (radius + 220) -
+            chSpread * Math.cos(angle) +
+            lesSpread * Math.cos(angle + Math.PI / 2) +
+            160;
         }
       }
 
       return {
         id: node.id,
-        data: { label: node.data.label },
+        data: { label: node.data?.label ?? '' },
         position: { x, y },
         style: getStyleForType(node.type),
       };
@@ -138,6 +182,8 @@ export default function KnowledgeGraph() {
             nodes={formattedNodes as any}
             edges={formattedEdges}
             fitView
+            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+            minZoom={0.2}
             className="bg-accent/5 dark:bg-transparent"
           >
             <Controls className="!bg-card !border-border/60 !rounded-xl !shadow-lg" />

@@ -57,6 +57,29 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Reorder subjects — must be registered before /:id so "reorder" is not treated as an id
+router.put('/reorder', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { order } = req.body as { order: { id: string; order: number }[] };
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array' });
+
+    await Promise.all(
+      order.map(async (item) => {
+        const subject = await Subject.findById(item.id);
+        if (!subject || subject.userId !== userId) {
+          throw new Error(`Subject not found: ${item.id}`);
+        }
+        return Subject.findByIdAndUpdate(item.id, { order: item.order });
+      })
+    );
+    res.json({ message: 'Subjects reordered' });
+  } catch (error) {
+    console.error('Reorder subjects error:', error);
+    res.status(500).json({ error: 'Failed to reorder subjects' });
+  }
+});
+
 // Update subject
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
@@ -101,24 +124,6 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Subject deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete subject' });
-  }
-});
-
-// Reorder subjects — accepts { order: [{ id, order }] }
-router.put('/reorder', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const { order } = req.body as { order: { id: string; order: number }[] };
-    if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array' });
-
-    await Promise.all(
-      order.map((item) =>
-        Subject.findOneAndUpdate({ _id: item.id, userId }, { order: item.order })
-      )
-    );
-    res.json({ message: 'Subjects reordered' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to reorder subjects' });
   }
 });
 
