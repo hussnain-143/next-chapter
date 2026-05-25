@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getKnowledgeGraph } from '../../lib/api';
+import { computeKnowledgeGraphLayout } from '../../lib/graphLayout';
 import {
   ReactFlow,
   Controls,
@@ -20,6 +21,12 @@ import {
   type KnowledgeGraphNodeData,
 } from '../../components/graph/KnowledgeGraphNode';
 
+const EDGE_COLORS = {
+  subjectChapter: '#A78BFA',
+  chapterLesson: '#38BDF8',
+  manual: '#94A3B8',
+} as const;
+
 export default function KnowledgeGraph() {
   const { data, isLoading } = useQuery({
     queryKey: ['knowledgeGraph'],
@@ -31,91 +38,17 @@ export default function KnowledgeGraph() {
       return { nodes: [], edges: [] as Edge[], counts: { subjects: 0, chapters: 0, lessons: 0 } };
     }
 
-    const radius = 200;
-    const centerX = 400;
-    const centerY = 280;
-    const subjectNodes = data.nodes.filter((n) => n.type === 'subject');
-
-    const subjectIndexByDocId = new Map<string, number>();
-    subjectNodes.forEach((n, i) => {
-      if (n.data?.subjectId) subjectIndexByDocId.set(String(n.data.subjectId), i);
-    });
-
-    const chaptersBySubject = new Map<string, typeof data.nodes>();
-    data.nodes
-      .filter((n) => n.type === 'chapter' && n.data?.subjectId)
-      .forEach((n) => {
-        const key = String(n.data.subjectId);
-        if (!chaptersBySubject.has(key)) chaptersBySubject.set(key, []);
-        chaptersBySubject.get(key)!.push(n);
-      });
-
-    const lessonsByChapter = new Map<string, typeof data.nodes>();
-    data.nodes
-      .filter((n) => n.type === 'lesson' && n.data?.chapterId)
-      .forEach((n) => {
-        const key = String(n.data.chapterId);
-        if (!lessonsByChapter.has(key)) lessonsByChapter.set(key, []);
-        lessonsByChapter.get(key)!.push(n);
-      });
-
-    const needsAutoLayout = data.nodes.every(
-      (n) => (n.position?.x ?? 0) === 0 && (n.position?.y ?? 0) === 0
-    );
+    const layoutPositions = computeKnowledgeGraphLayout(data.nodes);
+    const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
 
     const nodes = data.nodes.map((node) => {
-      let x = node.position?.x ?? 0;
-      let y = node.position?.y ?? 0;
-
-      if (needsAutoLayout || (x === 0 && y === 0)) {
-        if (node.type === 'subject') {
-          const subIdx = subjectNodes.indexOf(node);
-          const angle = (subIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
-          x = centerX + Math.cos(angle) * radius;
-          y = centerY + Math.sin(angle) * radius;
-        } else if (node.type === 'chapter' && node.data?.subjectId) {
-          const subjectKey = String(node.data.subjectId);
-          const siblings = chaptersBySubject.get(subjectKey) ?? [];
-          const chIdx = siblings.indexOf(node);
-          const pSubIdx = subjectIndexByDocId.get(subjectKey) ?? 0;
-          const angle = (pSubIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
-          const spread = (chIdx - (siblings.length - 1) / 2) * 150;
-          x = centerX + Math.cos(angle) * (radius + 120) + spread * Math.sin(angle);
-          y = centerY + Math.sin(angle) * (radius + 120) - spread * Math.cos(angle) + 80;
-        } else if (node.type === 'lesson' && node.data?.chapterId) {
-          const chapterKey = String(node.data.chapterId);
-          const chNode = data.nodes.find(
-            (n) => n.type === 'chapter' && String(n.data?.chapterId) === chapterKey
-          );
-          const siblings = lessonsByChapter.get(chapterKey) ?? [];
-          const lesIdx = siblings.indexOf(node);
-          const subjectKey = chNode?.data?.subjectId ? String(chNode.data.subjectId) : '';
-          const chapterSiblings = subjectKey ? (chaptersBySubject.get(subjectKey) ?? []) : [];
-          const chIdx = chNode ? chapterSiblings.indexOf(chNode) : 0;
-          const pSubIdx = subjectKey ? (subjectIndexByDocId.get(subjectKey) ?? 0) : 0;
-          const angle = (pSubIdx / Math.max(1, subjectNodes.length)) * Math.PI * 2 - Math.PI / 2;
-          const chSpread = (chIdx - (chapterSiblings.length - 1) / 2) * 150;
-          const lesSpread = (lesIdx - (siblings.length - 1) / 2) * 100;
-          x =
-            centerX +
-            Math.cos(angle) * (radius + 220) +
-            chSpread * Math.sin(angle) +
-            lesSpread * Math.sin(angle + Math.PI / 2);
-          y =
-            centerY +
-            Math.sin(angle) * (radius + 220) -
-            chSpread * Math.cos(angle) +
-            lesSpread * Math.cos(angle + Math.PI / 2) +
-            160;
-        }
-      }
-
+      const pos = layoutPositions.get(node.id) ?? { x: 0, y: 0 };
       const nodeType = (node.type ?? 'lesson') as KnowledgeGraphNodeData['nodeType'];
 
       return {
         id: node.id,
         type: 'knowledge',
-        position: { x, y },
+        position: pos,
         data: {
           label: node.data?.label ?? 'Untitled',
           nodeType,
@@ -124,13 +57,33 @@ export default function KnowledgeGraph() {
       };
     });
 
-    const edges: Edge[] = (data.edges ?? []).map((edge) => ({
-      ...edge,
-      type: 'smoothstep',
-      animated: edge.animated ?? true,
-      style: { stroke: '#6366F1', strokeWidth: 2, opacity: 0.65 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#6366F1', width: 16, height: 16 },
-    }));
+    // Only tree edges (subject→chapter→lesson); drop manual links that crisscross the layout
+    const edges: Edge[] = (data.edges ?? [])
+      .filter((edge) => {
+        const sourceNode = nodeById.get(edge.source);
+        const targetNode = nodeById.get(edge.target);
+        if (!sourceNode || !targetNode) return false;
+        if (sourceNode.type === 'subject' && targetNode.type === 'chapter') {
+          return String(sourceNode.data?.subjectId) === String(targetNode.data?.subjectId);
+        }
+        if (sourceNode.type === 'chapter' && targetNode.type === 'lesson') {
+          return String(sourceNode.data?.chapterId) === String(targetNode.data?.chapterId);
+        }
+        return false;
+      })
+      .map((edge) => {
+        const sourceNode = nodeById.get(edge.source)!;
+        const isSubjectChapter = sourceNode.type === 'subject';
+        const stroke = isSubjectChapter ? EDGE_COLORS.subjectChapter : EDGE_COLORS.chapterLesson;
+
+        return {
+          ...edge,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke, strokeWidth: 2.5, opacity: 0.9 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 14, height: 14 },
+        };
+      });
 
     return {
       nodes,
@@ -147,20 +100,23 @@ export default function KnowledgeGraph() {
     <div className="flex flex-col gap-6 max-w-6xl mx-auto h-[calc(100vh-100px)] pb-6">
       <PageIntro
         title="Knowledge Map"
-        description="See how your subjects, chapters, and lessons connect. Purple nodes are subjects, gold are chapters, and blue-bordered cards are lessons."
+        description="Each subject is its own tree: subject on top, chapters in a row below, lessons under each chapter."
         icon={GitFork}
-        hint="Scroll to zoom · Drag the background to pan · Use +/− controls at the bottom left."
+        hint="Scroll to zoom · Drag the canvas to pan · Colours: violet = subject, cream = chapter, slate = lesson."
       />
 
       {!isLoading && formattedNodes.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <LegendItem color="bg-primary" label={`${counts.subjects} Subjects`} />
-          <LegendItem color="bg-[#FBBF24]" label={`${counts.chapters} Chapters`} />
-          <LegendItem color="bg-card border-2 border-accent" label={`${counts.lessons} Lessons`} />
+          <LegendItem
+            swatchClass="bg-gradient-to-br from-violet-600 to-indigo-700"
+            label={`${counts.subjects} Subjects`}
+          />
+          <LegendItem swatchClass="bg-[#FFFBEB] border-2 border-amber-500/60" label={`${counts.chapters} Chapters`} />
+          <LegendItem swatchClass="bg-[#1E293B] border-2 border-sky-500/50" label={`${counts.lessons} Lessons`} />
         </div>
       )}
 
-      <div className="flex-1 min-h-[420px] glass-card rounded-2xl overflow-hidden border border-border/50 relative shadow-lg">
+      <div className="flex-1 min-h-[480px] glass-card rounded-2xl overflow-hidden border border-border/50 relative shadow-lg">
         {isLoading ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin text-primary" aria-hidden />
@@ -182,9 +138,10 @@ export default function KnowledgeGraph() {
             edges={formattedEdges}
             nodeTypes={knowledgeGraphNodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.25, maxZoom: 0.95 }}
-            minZoom={0.15}
-            maxZoom={1.5}
+            fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+            minZoom={0.1}
+            maxZoom={1.25}
+            nodesDraggable={false}
             proOptions={{ hideAttribution: true }}
             className="knowledge-graph-flow"
           >
@@ -195,18 +152,18 @@ export default function KnowledgeGraph() {
             <MiniMap
               nodeColor={(node) => {
                 const t = (node.data as KnowledgeGraphNodeData)?.nodeType;
-                if (t === 'subject') return '#8B5CF6';
-                if (t === 'chapter') return '#FBBF24';
-                return '#6366F1';
+                if (t === 'subject') return '#7C3AED';
+                if (t === 'chapter') return '#F59E0B';
+                return '#334155';
               }}
-              maskColor="rgba(28, 26, 46, 0.75)"
+              maskColor="rgba(28, 26, 46, 0.8)"
               className="!bg-card !border-border !rounded-xl !shadow-lg hidden md:block"
             />
-            <Background color="rgba(155, 142, 196, 0.12)" gap={20} size={1} />
+            <Background color="rgba(155, 142, 196, 0.1)" gap={24} size={1} />
             <Panel position="bottom-right" className="hidden sm:block m-3">
               <div className="flex items-center gap-2 rounded-lg bg-card/95 border border-border px-3 py-2 text-xs text-muted-foreground shadow-md backdrop-blur-sm">
                 <ZoomIn className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                <span>Pinch or scroll to zoom</span>
+                <span>Scroll to zoom · drag canvas to pan</span>
               </div>
             </Panel>
           </ReactFlow>
@@ -216,10 +173,10 @@ export default function KnowledgeGraph() {
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
+function LegendItem({ swatchClass, label }: { swatchClass: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 font-medium text-foreground">
-      <span className={`w-3 h-3 rounded-full shrink-0 ${color}`} aria-hidden />
+      <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${swatchClass}`} aria-hidden />
       {label}
     </span>
   );

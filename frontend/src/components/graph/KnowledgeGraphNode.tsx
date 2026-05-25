@@ -12,24 +12,30 @@ export type KnowledgeGraphNodeData = {
 const TYPE_CONFIG = {
   subject: {
     label: 'Subject',
-    className:
-      'bg-primary text-white border-violet-400/40 shadow-[0_4px_24px_rgba(139,92,246,0.35)]',
-    badgeClass: 'bg-white/20 text-white',
-    handle: '#C4B5FD',
+    container:
+      'bg-gradient-to-br from-violet-600 to-indigo-700 text-white border-violet-400/50 shadow-[0_6px_28px_rgba(124,58,237,0.45)]',
+    badge: 'bg-white/25 text-white',
+    barTrack: 'bg-white/25',
+    barFill: 'bg-white',
+    handle: '#DDD6FE',
   },
   chapter: {
     label: 'Chapter',
-    className:
-      'bg-[#FBBF24] text-[#1E1B4B] border-amber-300/50 shadow-[0_4px_20px_rgba(251,191,36,0.3)]',
-    badgeClass: 'bg-[#1E1B4B]/15 text-[#1E1B4B]',
-    handle: '#FDE68A',
+    container:
+      'bg-[#FFFBEB] text-[#78350F] border-amber-500/60 shadow-[0_4px_18px_rgba(245,158,11,0.25)]',
+    badge: 'bg-amber-500/20 text-amber-900',
+    barTrack: 'bg-amber-900/10',
+    barFill: 'bg-amber-600',
+    handle: '#F59E0B',
   },
   lesson: {
     label: 'Lesson',
-    className:
-      'bg-card text-foreground border-accent/50 shadow-[0_2px_16px_rgba(99,102,241,0.2)]',
-    badgeClass: 'bg-accent/15 text-secondary-foreground',
-    handle: '#818CF8',
+    container:
+      'bg-[#1E293B] text-slate-100 border-sky-500/50 shadow-[0_4px_16px_rgba(56,189,248,0.2)]',
+    badge: 'bg-sky-500/20 text-sky-200',
+    barTrack: 'bg-slate-600/50',
+    barFill: 'bg-sky-400',
+    handle: '#38BDF8',
   },
 } as const;
 
@@ -43,35 +49,35 @@ function KnowledgeGraphNodeComponent({ data }: NodeProps) {
   return (
     <div
       className={[
-        'min-w-[140px] max-w-[200px] rounded-xl border-2 px-3 py-2.5',
-        config.className,
+        'w-[200px] rounded-xl border-2 px-3 py-2.5 nodrag',
+        config.container,
       ].join(' ')}
       title={title}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-2 !h-2 !border-2 !bg-card"
+        className="!w-2.5 !h-2.5 !border-2 !bg-[#1C1A2E]"
         style={{ borderColor: config.handle }}
       />
 
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span
           className={[
-            'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md',
-            config.badgeClass,
+            'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded',
+            config.badge,
           ].join(' ')}
         >
           {config.label}
         </span>
-        <span className="text-[11px] font-bold tabular-nums opacity-90">{mastery}%</span>
+        <span className="text-xs font-bold tabular-nums">{mastery}%</span>
       </div>
 
-      <p className="text-sm font-semibold leading-snug line-clamp-2 break-words">{title}</p>
+      <p className="text-[13px] font-semibold leading-snug line-clamp-3">{title}</p>
 
-      <div className="mt-2 h-1 rounded-full bg-black/10 overflow-hidden">
+      <div className={`mt-2 h-1.5 rounded-full overflow-hidden ${config.barTrack}`}>
         <div
-          className="h-full rounded-full bg-white/70 transition-all"
+          className={`h-full rounded-full ${config.barFill}`}
           style={{ width: `${Math.min(100, mastery)}%` }}
         />
       </div>
@@ -79,7 +85,7 @@ function KnowledgeGraphNodeComponent({ data }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-2 !h-2 !border-2 !bg-card"
+        className="!w-2.5 !h-2.5 !border-2 !bg-[#1C1A2E]"
         style={{ borderColor: config.handle }}
       />
     </div>
