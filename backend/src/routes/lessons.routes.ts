@@ -5,6 +5,7 @@ import Subject from '../models/Subject';
 import ExecutionLog from '../models/ExecutionLog';
 import KnowledgeNode from '../models/KnowledgeNode';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { recalculateLessonHierarchy } from '../services/progress.service';
 
 const router = Router();
 
@@ -143,6 +144,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       notes: `Created lesson: ${lesson.title}`,
     }).save();
 
+    await recalculateLessonHierarchy(String(chapter._id), String(chapter.subjectId));
+
     res.status(201).json(lesson);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create lesson' });
@@ -158,13 +161,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Lesson not found' });
     }
 
-    const lesson = await Lesson.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let lesson = await Lesson.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
 
     // Track status changes
     if (req.body.status && req.body.status !== oldLesson.status) {
       let xpGain = 0;
-      const updates: any = {};
+      const updates: Record<string, unknown> = {};
 
       if (req.body.status === 'started' && !oldLesson.startedAt) {
         updates.startedAt = new Date();
@@ -172,14 +175,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       } else if (req.body.status === 'completed') {
         updates.completedAt = new Date();
         xpGain = 25;
+        updates.masteryScore = 100;
 
-        // Set next review (spaced repetition - review in 1 day)
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + 1);
         updates.nextReviewAt = nextReview;
         updates.reviewCount = (oldLesson.reviewCount || 0) + 1;
       } else if (req.body.status === 'revision') {
-        // Increase interval: 1, 3, 7, 14, 30 days
         const intervals = [1, 3, 7, 14, 30];
         const idx = Math.min(oldLesson.reviewCount || 0, intervals.length - 1);
         const nextReview = new Date();
@@ -195,24 +197,27 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       if (Object.keys(updates).length > 0) {
-        await Lesson.findByIdAndUpdate(req.params.id, updates);
+        lesson = await Lesson.findByIdAndUpdate(req.params.id, updates, { new: true });
       }
 
-      // Log execution
       await new ExecutionLog({
         userId,
-        lessonId: lesson._id,
-        subjectId: lesson.subjectId,
-        chapterId: lesson.chapterId,
+        lessonId: lesson!._id,
+        subjectId: lesson!.subjectId,
+        chapterId: lesson!.chapterId,
         action: req.body.status === 'completed' ? 'completed' : req.body.status === 'revision' ? 'revised' : 'started',
         notes: `Status changed: ${oldLesson.status} → ${req.body.status}`,
       }).save();
+
+      await recalculateLessonHierarchy(String(lesson!.chapterId), String(lesson!.subjectId));
     }
 
-    // Update knowledge node
     await KnowledgeNode.findOneAndUpdate(
-      { lessonId: lesson._id, type: 'lesson' },
-      { label: lesson.title, masteryScore: lesson.masteryScore }
+      { lessonId: lesson!._id, type: 'lesson' },
+      {
+        label: lesson!.title,
+        masteryScore: lesson!.status === 'completed' ? 100 : lesson!.masteryScore,
+      }
     );
 
     res.json(lesson);
@@ -259,10 +264,10 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 
     await Promise.all([
       Lesson.findByIdAndDelete(req.params.id),
-      Chapter.findByIdAndUpdate(lesson.chapterId, { $inc: { totalLessons: -1 } }),
-      Subject.findByIdAndUpdate(lesson.subjectId, { $inc: { totalLessons: -1 } }),
       KnowledgeNode.deleteMany({ lessonId: lesson._id }),
     ]);
+
+    await recalculateLessonHierarchy(String(lesson.chapterId), String(lesson.subjectId));
 
     res.json({ message: 'Lesson deleted successfully' });
   } catch (error) {

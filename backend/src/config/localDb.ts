@@ -739,22 +739,26 @@ export const hookLocalDbFallback = () => {
         if (query && typeof query === 'object') {
           Object.keys(query).forEach((key) => {
             const val = query[key];
-            if (val && typeof val === 'object' && ('$in' in val || '$gte' in val || '$lt' in val)) {
+            if (val && typeof val === 'object' && ('$in' in val || '$gte' in val || '$lt' in val || '$lte' in val)) {
               if ('$in' in val) {
-                const arr = val['$in'];
+                const arr = val['$in'].map(String);
                 list = list.filter((item: any) => arr.includes(String(item[key])));
               }
-              // Simple date range match logic for weekly heatmap aggregate
               if ('$gte' in val) {
                 const dateLimit = new Date(val['$gte']).getTime();
                 list = list.filter((item: any) => new Date(item[key]).getTime() >= dateLimit);
+              }
+              if ('$lte' in val) {
+                const dateLimit = new Date(val['$lte']).getTime();
+                list = list.filter((item: any) => new Date(item[key]).getTime() <= dateLimit);
               }
               if ('$lt' in val) {
                 const dateLimit = new Date(val['$lt']).getTime();
                 list = list.filter((item: any) => new Date(item[key]).getTime() < dateLimit);
               }
-            } else if (key !== '_id' && key !== 'userId') {
-              // Exact match
+            } else if (key === 'userId' || key === '_id') {
+              list = list.filter((item: any) => String(item[key]) === String(val));
+            } else {
               list = list.filter((item: any) => String(item[key]) === String(val));
             }
           });
@@ -799,7 +803,15 @@ export const hookLocalDbFallback = () => {
         return null;
       };
 
-      // 5. Mock findByIdAndDelete
+      // 5. Mock findOneAndUpdate
+      Model.findOneAndUpdate = async function (query: any = {}, update: any = {}) {
+        const list = await Model.find(query).then((rows: any[]) => rows);
+        if (!list.length) return null;
+        const id = list[0]._id;
+        return Model.findByIdAndUpdate(id, update, { new: true });
+      };
+
+      // 6. Mock findByIdAndDelete
       Model.findByIdAndDelete = async function (id: string) {
         const table: any[] = db[tableName];
         const idx = table.findIndex((x) => String(x._id) === String(id));
@@ -838,6 +850,10 @@ export const hookLocalDbFallback = () => {
           const matchStage = pipeline.find((p) => p.$match);
           const groupStage = pipeline.find((p) => p.$group);
           let filtered = [...db.studysessions];
+
+          if (matchStage?.$match?.userId) {
+            filtered = filtered.filter((s) => String(s.userId) === String(matchStage.$match.userId));
+          }
 
           if (matchStage && matchStage.$match.startTime && matchStage.$match.startTime.$gte) {
             const limitTime = new Date(matchStage.$match.startTime.$gte).getTime();

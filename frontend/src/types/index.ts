@@ -127,6 +127,7 @@ export interface IDashboardStats {
   totalTimeSpent: number;
   totalXP: number;
   streak: number;
+  userLevel?: number;
   productivityScore: number;
   completionRate: number;
   heatmapData: { _id: string; totalDuration: number; sessionCount: number }[];

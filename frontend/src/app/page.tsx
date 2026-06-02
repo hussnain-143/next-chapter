@@ -16,12 +16,15 @@ import {
   ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSyncDashboardUser } from '../hooks/useSyncDashboardUser';
 
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: getDashboardStats,
   });
+
+  useSyncDashboardUser(stats);
 
   if (isLoading) {
     return (

@@ -4,6 +4,7 @@ import { Award, Flame, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardStats } from '../../lib/api';
 import Link from 'next/link';
+import { useSyncDashboardUser } from '../../hooks/useSyncDashboardUser';
 
 export default function Header() {
   const { data: stats } = useQuery({
@@ -11,6 +12,8 @@ export default function Header() {
     queryFn: getDashboardStats,
     refetchInterval: 15000,
   });
+
+  useSyncDashboardUser(stats);
 
   return (
     <header className="header-bar h-14 flex items-center justify-between px-6 shrink-0 z-40">

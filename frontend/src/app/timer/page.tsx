@@ -13,7 +13,7 @@ import {
   Plus,
   ArrowRight
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { logSession } from '../../lib/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -31,7 +31,8 @@ export default function PomodoroPage() {
     setMode, 
     setIsRunning, 
     resetTimer, 
-    setLengths 
+    setLengths,
+    tick,
   } = useTimerStore();
 
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -49,9 +50,45 @@ export default function PomodoroPage() {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setShowLogModal(false);
       setLogNotes('');
-      toast.success("Study session logged successfully!");
+      toast.success('Study session logged successfully!');
     },
+    onError: () => toast.error('Could not log session', { description: 'Please try again.' }),
   });
+
+  const logFocusSession = useCallback(
+    (minutes: number) => {
+      const durationSec = minutes * 60;
+      logSessionMutation.mutate({
+        duration: durationSec,
+        pomodoroCount: 1,
+        startTime: new Date(Date.now() - durationSec * 1000).toISOString(),
+        endTime: new Date().toISOString(),
+        type: 'study',
+        notes: 'Pomodoro focus session completed',
+      });
+    },
+    [logSessionMutation]
+  );
+
+  const prevModeRef = useRef(mode);
+
+  // Run countdown while timer is active
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(() => {
+      const state = useTimerStore.getState();
+      const prevMode = prevModeRef.current;
+      const prevTime = state.timeLeft;
+      state.tick();
+      const next = useTimerStore.getState();
+      if (prevMode === 'focus' && prevTime <= 1 && next.mode !== 'focus') {
+        logFocusSession(state.focusLength);
+        toast.success('Focus block complete!', { description: 'Session added to your analytics.' });
+      }
+      prevModeRef.current = next.mode;
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, logFocusSession]);
 
   const handleManualLog = (e: React.FormEvent) => {
     e.preventDefault();

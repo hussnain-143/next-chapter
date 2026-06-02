@@ -73,6 +73,9 @@ export default function LessonDetails({ params: paramsPromise }: { params: Promi
       queryClient.invalidateQueries({ queryKey: ['lesson', lessonId] });
       queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['subject', subjectId] });
+      queryClient.invalidateQueries({ queryKey: ['chapters', subjectId] });
       setIsSaving(false);
       setIsDirty(false);
     },
