@@ -4,6 +4,32 @@ import Subject from '../models/Subject';
 import ExecutionLog from '../models/ExecutionLog';
 import { syncUserGamification, recalculateSubjectStats } from './progress.service';
 
+export type DailyActivity = {
+  _id: string;
+  totalDuration: number;
+  sessionCount: number;
+  pomodoroCount: number;
+};
+
+/** Calendar date in server local TZ — must match frontend heatmap keys */
+export function toLocalDateKey(date: Date | string): string {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+const LOG_DURATION_SECONDS: Record<string, number> = {
+  completed: 20 * 60,
+  revised: 12 * 60,
+  started: 8 * 60,
+  bookmarked: 3 * 60,
+  quiz_taken: 10 * 60,
+  note_added: 5 * 60,
+  code_added: 10 * 60,
+};
+
 function startOfDay(date: Date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -16,25 +42,47 @@ function endOfDay(date: Date) {
   return d;
 }
 
-/** True if the user studied or completed learning work on this calendar day */
+/** Merge Pomodoro sessions + execution logs into per-day study minutes */
+export function buildDailyActivity(
+  sessions: { startTime: Date | string; duration?: number; pomodoroCount?: number }[],
+  logs: { timestamp: Date | string; duration?: number; action?: string }[]
+): DailyActivity[] {
+  const groups: Record<string, DailyActivity> = {};
+
+  const add = (dateKey: string, seconds: number, sessionsInc = 0, pomodorosInc = 0) => {
+    if (!groups[dateKey]) {
+      groups[dateKey] = { _id: dateKey, totalDuration: 0, sessionCount: 0, pomodoroCount: 0 };
+    }
+    groups[dateKey].totalDuration += seconds;
+    groups[dateKey].sessionCount += sessionsInc;
+    groups[dateKey].pomodoroCount += pomodorosInc;
+  };
+
+  sessions.forEach((session) => {
+    const key = toLocalDateKey(session.startTime);
+    add(key, session.duration || 0, 1, session.pomodoroCount || 0);
+  });
+
+  logs.forEach((log) => {
+    const key = toLocalDateKey(log.timestamp);
+    const estimated =
+      (log.duration && log.duration > 0)
+        ? log.duration
+        : LOG_DURATION_SECONDS[log.action || ''] ?? 5 * 60;
+    add(key, estimated, 0, 0);
+  });
+
+  return Object.values(groups).sort((a, b) => a._id.localeCompare(b._id));
+}
+
 async function hasLearningActivityOnDay(userId: string, day: Date): Promise<boolean> {
   const dayStart = startOfDay(day);
   const dayEnd = endOfDay(day);
 
   const [session, log, completedLesson] = await Promise.all([
-    StudySession.findOne({
-      userId,
-      startTime: { $gte: dayStart, $lt: dayEnd },
-    }),
-    ExecutionLog.findOne({
-      userId,
-      timestamp: { $gte: dayStart, $lt: dayEnd },
-      action: { $in: ['completed', 'started', 'revised'] },
-    }),
-    Lesson.findOne({
-      userId,
-      completedAt: { $gte: dayStart, $lt: dayEnd },
-    }),
+    StudySession.findOne({ userId, startTime: { $gte: dayStart, $lt: dayEnd } }),
+    ExecutionLog.findOne({ userId, timestamp: { $gte: dayStart, $lt: dayEnd } }),
+    Lesson.findOne({ userId, completedAt: { $gte: dayStart, $lt: dayEnd } }),
   ]);
 
   return Boolean(session || log || completedLesson);
@@ -45,7 +93,6 @@ async function calculateStreak(userId: string): Promise<number> {
   let streak = 0;
   const checkDate = new Date(today);
 
-  // If nothing logged yet today, start counting from yesterday (day still in progress)
   const activeToday = await hasLearningActivityOnDay(userId, today);
   if (!activeToday) {
     checkDate.setDate(checkDate.getDate() - 1);
@@ -59,34 +106,23 @@ async function calculateStreak(userId: string): Promise<number> {
   return streak;
 }
 
-function groupSessionsByDay(
-  sessions: { startTime: Date | string; duration: number; pomodoroCount?: number }[]
-) {
-  const groups: Record<string, { _id: string; totalDuration: number; sessionCount: number; pomodoroCount: number }> = {};
-
-  sessions.forEach((session) => {
-    const dateStr = new Date(session.startTime).toISOString().split('T')[0];
-    if (!groups[dateStr]) {
-      groups[dateStr] = { _id: dateStr, totalDuration: 0, sessionCount: 0, pomodoroCount: 0 };
-    }
-    groups[dateStr].totalDuration += session.duration || 0;
-    groups[dateStr].sessionCount += 1;
-    groups[dateStr].pomodoroCount += session.pomodoroCount || 0;
-  });
-
-  return Object.values(groups).sort((a, b) => a._id.localeCompare(b._id));
-}
-
 export const getDashboardStats = async (userId: string) => {
   let subjects = await Subject.find({ userId, isArchived: false });
 
-  // Refresh stored progress counters so dashboard bars stay accurate
   await Promise.all(subjects.map((s) => recalculateSubjectStats(String(s._id))));
   subjects = await Subject.find({ userId, isArchived: false });
 
-  const [lessons, sessions, recentLogs] = await Promise.all([
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  weekAgo.setHours(0, 0, 0, 0);
+
+  const [lessons, sessions, logs, recentLogs] = await Promise.all([
     Lesson.find({ userId }),
     StudySession.find({ userId }),
+    ExecutionLog.find({ userId, timestamp: { $gte: oneYearAgo } }),
     ExecutionLog.find({ userId }).sort({ timestamp: -1 }).limit(20),
   ]);
 
@@ -97,23 +133,19 @@ export const getDashboardStats = async (userId: string) => {
 
   const sessionTime = sessions.reduce((acc, s) => acc + (s.duration || 0), 0);
   const lessonTime = lessons.reduce((acc, l) => acc + (l.timeSpent || 0), 0);
-  const totalTimeSpent = sessionTime + lessonTime;
-  const totalXP = lessons.reduce((acc, l) => acc + (l.xpEarned || 0), 0);
 
+  const allDaily = buildDailyActivity(sessions, logs);
+  const heatmapData = allDaily.filter((d) => d._id >= toLocalDateKey(oneYearAgo));
+
+  const weekStartKey = toLocalDateKey(weekAgo);
+  const weeklyData = allDaily.filter((d) => d._id >= weekStartKey);
+
+  const activityMinutes = allDaily.reduce((acc, d) => acc + d.totalDuration, 0);
+  const totalTimeSpent = Math.max(sessionTime + lessonTime, activityMinutes);
+
+  const totalXP = lessons.reduce((acc, l) => acc + (l.xpEarned || 0), 0);
   const streak = await calculateStreak(userId);
   await syncUserGamification(userId, streak);
-
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-
-  const sessionsInYear = sessions.filter((s) => new Date(s.startTime) >= oneYearAgo);
-  const sessionsInWeek = sessions.filter((s) => new Date(s.startTime) >= weekAgo);
-
-  const heatmapData = groupSessionsByDay(sessionsInYear);
-  const weeklyData = groupSessionsByDay(sessionsInWeek);
 
   const subjectProgress = subjects.map((s) => ({
     id: s._id,
@@ -126,7 +158,7 @@ export const getDashboardStats = async (userId: string) => {
   }));
 
   const completionRate = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-  const activeDays = heatmapData.filter((d) => d.totalDuration > 0).length;
+  const activeDays = allDaily.filter((d) => d.totalDuration > 0).length;
   const avgDailyTime = activeDays > 0 ? totalTimeSpent / activeDays : 0;
   const productivityScore = Math.min(
     100,
@@ -166,8 +198,10 @@ export const getWeeklyReport = async (userId: string) => {
     ExecutionLog.find({ userId, timestamp: { $gte: weekAgo } }),
   ]);
 
+  const daily = buildDailyActivity(sessions, logs);
+
   return {
-    totalStudyTime: sessions.reduce((acc, s) => acc + s.duration, 0),
+    totalStudyTime: daily.reduce((acc, d) => acc + d.totalDuration, 0),
     sessionsCompleted: sessions.length,
     lessonsCompleted: completedLessons.length,
     totalPomodoros: sessions.reduce((acc, s) => acc + s.pomodoroCount, 0),

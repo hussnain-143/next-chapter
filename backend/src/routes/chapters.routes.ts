@@ -4,6 +4,7 @@ import Lesson from '../models/Lesson';
 import Subject from '../models/Subject';
 import KnowledgeNode from '../models/KnowledgeNode';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { recalculateChapterStats } from '../services/progress.service';
 
 const router = Router();
 
@@ -14,7 +15,15 @@ router.get('/subject/:subjectId', async (req: AuthRequest, res: Response) => {
       subjectId: req.params.subjectId,
       userId: req.user!.id,
     }).sort({ order: 1 });
-    res.json(chapters);
+
+    await Promise.all(chapters.map((ch: { _id: string }) => recalculateChapterStats(String(ch._id))));
+
+    const refreshed = await (Chapter as any).find({
+      subjectId: req.params.subjectId,
+      userId: req.user!.id,
+    }).sort({ order: 1 });
+
+    res.json(refreshed);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch chapters' });
   }

@@ -6,6 +6,7 @@ import ExecutionLog from '../models/ExecutionLog';
 import KnowledgeNode from '../models/KnowledgeNode';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { recalculateLessonHierarchy } from '../services/progress.service';
+import StudySession from '../models/StudySession';
 
 const router = Router();
 
@@ -176,6 +177,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         updates.completedAt = new Date();
         xpGain = 25;
         updates.masteryScore = 100;
+        updates.timeSpent = (oldLesson.timeSpent || 0) + 20 * 60;
 
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + 1);
@@ -200,14 +202,34 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         lesson = await Lesson.findByIdAndUpdate(req.params.id, updates, { new: true });
       }
 
+      const logAction = req.body.status === 'completed' ? 'completed' : req.body.status === 'revision' ? 'revised' : 'started';
+      const studyMinutes =
+        logAction === 'completed' ? 20 : logAction === 'revised' ? 12 : 8;
+
       await new ExecutionLog({
         userId,
         lessonId: lesson!._id,
         subjectId: lesson!.subjectId,
         chapterId: lesson!.chapterId,
-        action: req.body.status === 'completed' ? 'completed' : req.body.status === 'revision' ? 'revised' : 'started',
+        action: logAction,
+        duration: studyMinutes * 60,
         notes: `Status changed: ${oldLesson.status} → ${req.body.status}`,
       }).save();
+
+      if (logAction === 'completed') {
+        await new StudySession({
+          userId,
+          lessonId: lesson!._id,
+          subjectId: lesson!.subjectId,
+          chapterId: lesson!.chapterId,
+          duration: studyMinutes * 60,
+          pomodoroCount: 0,
+          startTime: new Date(),
+          endTime: new Date(),
+          type: 'study',
+          notes: `Completed lesson: ${lesson!.title}`,
+        }).save();
+      }
 
       await recalculateLessonHierarchy(String(lesson!.chapterId), String(lesson!.subjectId));
     }

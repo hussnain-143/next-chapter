@@ -78,6 +78,7 @@ export default function SubjectDetails({ params: paramsPromise }: { params: Prom
   const { data: chapters = [], isLoading: loadingChapters } = useQuery({
     queryKey: ['chapters', subjectId],
     queryFn: () => getChapters(subjectId),
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {

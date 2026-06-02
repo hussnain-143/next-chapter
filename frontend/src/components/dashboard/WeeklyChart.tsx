@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { lastNDays, toLocalDateKey } from '../../lib/dateUtils';
 
 interface WeeklyData {
-  _id: string; // "YYYY-MM-DD"
+  _id: string;
   totalDuration: number;
   sessionCount: number;
   pomodoroCount: number;
@@ -21,21 +22,24 @@ export default function WeeklyChart({ data = [] }: WeeklyChartProps) {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return <div className="h-64 w-full bg-accent/20 animate-pulse rounded-2xl"></div>;
-  }
+  const chartData = useMemo(() => {
+    return lastNDays(7).map((date) => {
+      const key = toLocalDateKey(date);
+      const item = data.find((d) => d._id === key);
+      return {
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        minutes: item ? Math.round(item.totalDuration / 60) : 0,
+        sessions: item?.sessionCount ?? 0,
+        pomodoros: item?.pomodoroCount ?? 0,
+      };
+    });
+  }, [data]);
 
-  // Format data for chart
-  const chartData = data.map((item) => {
-    const dateObj = new Date(item._id);
-    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-    return {
-      day: dayName,
-      minutes: Math.round(item.totalDuration / 60),
-      sessions: item.sessionCount,
-      pomodoros: item.pomodoroCount,
-    };
-  });
+  const hasActivity = chartData.some((d) => d.minutes > 0);
+
+  if (!mounted) {
+    return <div className="h-64 w-full bg-accent/20 animate-pulse rounded-2xl" />;
+  }
 
   return (
     <div className="glass-card rounded-2xl p-6 space-y-4">
@@ -45,9 +49,14 @@ export default function WeeklyChart({ data = [] }: WeeklyChartProps) {
       </div>
 
       <div className="h-64 w-full">
-        {chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">
-            No study sessions logged this week. Start a Pomodoro!
+        {!hasActivity ? (
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+            <p className="text-xs text-muted-foreground italic">
+              No study activity this week yet.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Complete a lesson or use the Pomodoro timer — both count toward this chart.
+            </p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -67,10 +76,18 @@ export default function WeeklyChart({ data = [] }: WeeklyChartProps) {
                   border: '1px solid var(--border)',
                   borderRadius: '12px',
                   fontSize: '12px',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                 }}
+                formatter={(value) => [`${value ?? 0} min`, 'Study time']}
               />
-              <Area type="monotone" dataKey="minutes" name="Minutes" stroke="var(--chart-stroke)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
+              <Area
+                type="monotone"
+                dataKey="minutes"
+                name="Minutes"
+                stroke="var(--chart-stroke)"
+                strokeWidth={2.5}
+                fillOpacity={1}
+                fill="url(#colorMins)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         )}
